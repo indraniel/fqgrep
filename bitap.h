@@ -12,6 +12,7 @@ extern "C" {
 
 /* D E F I N E S *************************************************************/
 #define PRG_NAME "fqgrep"
+#define PATTERN_LENGTH_LIMIT 64
 
 /* P R O T O T Y P E S *******************************************************/
 const char* bitap_fuzzy_bitwise_search(const char *text, 

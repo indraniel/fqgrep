@@ -18,12 +18,13 @@ bitap_fuzzy_bitwise_search(const char *text, const char *pattern, int k) {
     int i, d;
     
     if (pattern[0] == '\0') return text;
-    if (m > 31) {
+    if (m > PATTERN_LENGTH_LIMIT) {
         // return "The pattern is too long!";
-        fprintf(stderr, "%s : %s %s %d %s\n",
+        fprintf(stderr, "%s : %s %d %s %d %s\n",
                         PRG_NAME,
-                        "bitap search currently limited to patterns of ",
-                        "length 31 or less characters. Input pattern is ",
+                        "bitap search currently limited to patterns of length",
+                        PATTERN_LENGTH_LIMIT,
+                        "or less characters. Input pattern is",
                         m, 
                         "characters long");
         exit(1);

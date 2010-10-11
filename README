@@ -1,0 +1,70 @@
+SYNOPSIS
+========
+
+This is 'grep' designed for FASTQ type files. It performs searches for
+exact sequence string matches as well as some limited approximate string
+searches.
+
+Below is the help message via ('fqgrep -h') describing its usage:
+
+Usage: fqgrep [options] -p <pattern> <fastq_files>
+        -h                  This help message   
+        -v                  Program and version information
+        -p                  Pattern of interest to grep [REQUIRED]
+        -c                  Highlight matching string with color
+        -m                  Number of mismatches to allow for search pattern
+                            [Default: 0]        
+        -C                  Display only a total count of matches
+                            (per input FASTQ file)
+        -o <fastq_file>     Desired fastq output file.
+                            If not specified, defaults to stdout
+
+DESCRIPTION
+===========
+
+This program is really a stitch of the following pieces of separate code
+found on the internet:
+
+Heng Li's (of maq and bwa fame) FASTQ Parser in C:
+http://lh3lh3.users.sourceforge.net/parsefastq.shtml
+
+Wikipedia's description of the Boyer-Moore string search algorithm:
+http://en.wikipedia.org/wiki/Boyer%E2%80%93Moore_string_search_algorithm
+
+Wikipedia's description of the Bitap algorithm:
+http://en.wikipedia.org/wiki/Bitap_algorithm
+
+When zero mismatches on a pattern are specified (the default case)
+the Boyer-Moore approach is taken. Otherwise, the Bitap algorithm
+is used for approximate string matches.
+
+LIMITATIONS
+===========
+
+The current Bitap implementation (a 99% code copy from the Wikipedia
+page) only accounts for string substitutions (not insertions or
+deletions). The current Bitap implementation only accounts for searching
+short patterns (31 bp length limitation). There could be future plans
+to perhaps adjust the Bitap algorithm implementation to handle the
+additional insertion, deletion and longer string pattern cases if this
+program seems interesting.
+
+Currenly only valid FASTQ files are accepted as inputs. There is not
+much validation of the input files being done. There could be unexpected
+behavior when passing in non-FASTQ files as input arguments. We are
+relying completely on Heng Li's FASTQ parsing logic here!
+
+FUTURE IDEAS
+============
+
+* try using the libbitap (http://www.rational.co.za/libbitap/) or
+  TRE agrep (http://laurikari.net/tre/) libraries for more approximate
+  searching features and optimizations.
+* optimize the Boyer-Moore implementation for DNA sequences
+  (it is currently a 99% copy from the Wikipedia page)
+* implementing an inverse match feature
+* a better stat summary output format
+* appropriately handling & outputing FASTA format files
+* perhaps have a "windowing" feature to only look at sequences for a
+  particular range
+* be able to perform some trimming (or is that for another separate program?)

@@ -19,6 +19,14 @@ Usage: fqgrep [options] -p <pattern> <fastq_files>
         -o <fastq_file>     Desired fastq output file.
                             If not specified, defaults to stdout
 
+INSTALLATION
+============
+
+The installation process currently consists of a very simple Makefile.
+
+After downloading, and 'cd'ing into the directory just type 'make' at
+the command line.
+
 DESCRIPTION
 ===========
 

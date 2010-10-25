@@ -65,6 +65,7 @@ relying completely on Heng Li's FASTQ parsing logic here!
 FUTURE IDEAS
 ============
 
+* remove usage of linux specific function, strndup [DONE]
 * try using the libbitap (http://www.rational.co.za/libbitap/) or
   TRE agrep (http://laurikari.net/tre/) libraries for more approximate
   searching features and optimizations.

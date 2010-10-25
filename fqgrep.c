@@ -42,6 +42,7 @@ void display_read(FILE *out_fp,
                   const char *substr_position_start, 
                   const options opts);
 char* substring(const char *str, size_t start, size_t len);
+char* stringn_duplicate(const char *str, size_t n);
 
 /* G L O B A L S *************************************************************/
 
@@ -318,11 +319,43 @@ display_read(FILE *out_fp,
 
 char* 
 substring(const char *str, size_t start, size_t len) {
+    char *substr;
+
     if (str == NULL 
         || strlen(str) == 0 
         || strlen(str) < start 
         || strlen(str) < (start+len))
     return NULL;
 
-  return strndup(str + start, len);
+    substr = stringn_duplicate(str + start, len);
+    return substr;
+}
+
+/*
+   'stringn_duplicate' is really a poor man's duplication of GNU/libc's
+   'strndup'. However not all types of UNIXes implement strndup (Apple,
+   FreeBSD). So the function below is used instead for the ease of
+   portability.
+
+   The implementation is taken from :
+     http://webmail.solomo.de/~flo/strndup.patch
+     http://unix.derkeiler.com/Mailing-Lists/FreeBSD/arch/2008-12/msg00010.html
+*/
+char*
+stringn_duplicate(const char *str, size_t n) {
+    size_t len;
+    char *copy;
+
+    for (len = 0; len < n && str[len]; len++)
+        continue;
+
+    if ( ( copy = malloc(len + 1) ) == NULL ) {
+        fprintf(stderr, "%s : %s\n",
+                        PRG_NAME, "Trouble with malloc. Out of memory!");
+        exit(1);
+    }
+
+    memcpy(copy, str, len);
+    copy[len] = '\0';
+    return copy;
 }

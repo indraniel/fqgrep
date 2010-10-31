@@ -4,26 +4,47 @@
 #include <string.h>
 #include <unistd.h>
 #include <zlib.h>  
+#include <tre/tre.h>
 #include "kseq.h"
 #include "bm.h"
-#include "libbitap.h"
 
 /* D E F I N E S *************************************************************/
-#define VERSION "0.2"
+#define VERSION "0.3"
 #define PRG_NAME "fqgrep"
 #define FASTQ_FILENAME_MAX_LENGTH 1024
 #define MAX_PATTERN_LENGTH 1024
+#define MAX_DELIM_LENGTH 10
 
 /* D A T A    S T R U C T U R E S ********************************************/
 typedef struct {
     int count;
     int color;
-    int force_bitap;
-    int mismatches;
+    int force_tre;
+    int report_fastq;
+    int report_fasta;
+    int report_stats;
+    int max_mismatches;
+    int cost_insertions;
+    int cost_deletions;
+    int cost_substitutions;
     char output_fastq[FASTQ_FILENAME_MAX_LENGTH];
     char search_pattern[MAX_PATTERN_LENGTH];
-    bitapType *bitap_regexp;  // compiled libbitap regexp
+    char delim[MAX_DELIM_LENGTH];         /* delimiter used in stats report */
+    regex_t *tre_regex;                   /* Compiled tre regexp */
+    regaparams_t *tre_regex_match_params; /* tre regexp matching parameters */
 } options;
+
+typedef struct {
+    char *sequence;
+    char *substr_start;
+    char *substr_end;
+    int  start_pos;
+    int  end_pos;
+    int  num_mismatches;
+    int  num_insertions;
+    int  num_deletions;
+    int  num_substitutions;
+} read_match;
 
 /* 
    declare the type of file handler and the read() function
@@ -39,12 +60,29 @@ int   process_options(int argc, char *argv[], options *opts);
 void  search_input_fastq_file(FILE *out_fp,
                               const char *input_fastq,
                               const options opts);
-void  display_read(FILE *out_fp,
+void  report_read(FILE *out_fp,
+                  const options *opts,
+                  const kseq_t *seq,
+                  const read_match *info);
+void  report_fastq(FILE *out_fp,
+                   const options *opts,
                    const kseq_t *seq,
-                   const char *substr_position_start,
-                   const char *substr_position_end,
-                   const options opts);
-void  compile_bitap_regexp(bitapType *b, options *opts);
+                   const read_match *info);
+void  report_fasta(FILE *out_fp,
+                   const options *opts,
+                   const kseq_t *seq,
+                   const read_match *info);
+void  report_stats(FILE *out_fp,
+                   const options *opts,
+                   const kseq_t *seq,
+                   const read_match *info);
+void  display_sequence(FILE *out_fp,
+                       const options *opts,
+                       const char *sequence,
+                       const char *substr_start,
+                       const char *substr_end);
+void  setup_tre(regaparams_t *params, regex_t *regexp, options *opts);
+void  approximate_regexp_search(const options *opts, read_match *info);
 char* substring(const char *str, size_t start, size_t len);
 char* stringn_duplicate(const char *str, size_t n);
 
@@ -57,7 +95,25 @@ int main(int argc, char *argv[]) {
     int opt_idx, index;
     FILE *out_fp;
     char input_fastq[FASTQ_FILENAME_MAX_LENGTH] = { '\0' };
-    options opts = { 0, 0, 0, 0, {'\0'}, {'\0'}, NULL };
+
+    /* application of default options */
+    options opts = {
+        0,            // count flag
+        0,            // color flag
+        0,            // force tre engine flag
+        1,            // output fastq report
+        0,            // output fasta report
+        0,            // output stats report
+        0,            // max mismatches allowed
+        1,            // cost of insertions
+        1,            // cost of deletions
+        1,            // cost of substitutions
+        {'\0'},       // output fastq file name
+        {'\0'},       // search pattern string
+        "\t",         // delimiter string for stats report
+        NULL,         // pointer to tre regexp entity
+        NULL          // pointer to tre regexp matching parameters
+    };
 
     opt_idx = process_options(argc, argv, &opts);
 
@@ -67,10 +123,24 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    /* compile bitap regexp if needed */
-    if (opts.mismatches != 0 || opts.force_bitap == 1) {
-        bitapType bitap;
-        compile_bitap_regexp( &bitap, &opts );
+    /* setup and compile the tre regexp if needed */
+    if (opts.max_mismatches != 0 || opts.force_tre == 1) {
+        regex_t regxp;                    /* Compiled pattern to search for. */
+        regaparams_t match_params;        /* regexp matching parameters */
+
+        setup_tre( &match_params, &regxp, &opts );
+
+//    fprintf(stdout, "TRE regex params setup:\n");
+//    fprintf(stdout, "\t%-12s : %4d\n", "cost_ins",   match_params.cost_ins);
+//    fprintf(stdout, "\t%-12s : %4d\n", "cost_del",   match_params.cost_del);
+//    fprintf(stdout, "\t%-12s : %4d\n", "cost_subst", match_params.cost_subst);
+//    fprintf(stdout, "\t%-12s : %4d\n", "max_cost",   match_params.max_cost);
+
+//    fprintf(stdout, "\t%-12s : %4d\n", "max_ins",   match_params.max_ins);
+//    fprintf(stdout, "\t%-12s : %4d\n", "max_del",   match_params.max_del);
+//    fprintf(stdout, "\t%-12s : %4d\n", "max_subst", match_params.max_subst);
+//    fprintf(stdout, "\t%-12s : %4d\n", "max_err",   match_params.max_err);
+//    fprintf(stdout, "\n\n");
     }
 
     /* setup the appropriate output file pointer */
@@ -106,9 +176,19 @@ help_message() {
     fprintf(stdout, "\t%-20s%-20s\n", "-v", "Program and version information");
     fprintf(stdout, "\t%-20s%-20s\n", "-p", "Pattern of interest to grep [REQUIRED]");
     fprintf(stdout, "\t%-20s%-20s\n", "-c", "Highlight matching string with color");
-    fprintf(stdout, "\t%-20s%-20s\n", "-m", "Number of mismatches to allow for search pattern");
-    fprintf(stdout, "\t%-20s%-20s\n", "", "[Default: 0]");
-    fprintf(stdout, "\t%-20s%-20s\n", "-b", "Force bitap algorithm usage");
+    fprintf(stdout, "\t%-20s%-20s\n", "-f", "Output matches in FASTA format");
+    fprintf(stdout, "\t%-20s%-20s\n", "-s", "Output matches in detailed stats report format");
+    fprintf(stdout, "\t%-20s%-20s\n", "-d", "Delimiter string to separate columns");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "in detailed stats report [Default: '\\t']");
+    fprintf(stdout, "\t%-20s%-20s\n", "-m", "Total Number of mismatches to at most allow for");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "in search pattern [Default: 0]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-I", "Cost of base insertions in obtaining");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "approximate match [Default: 1]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-D", "Cost of base deletions in obtaining");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "approximate match [Default: 1]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-S", "Cost of base substitutions in obtaining");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "approximate match [Default: 1]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-e", "Force tre regexp engine usage");
     fprintf(stdout, "\t%-20s%-20s\n", "-C", "Display only a total count of matches");
     fprintf(stdout, "\t%-20s%-20s\n", "", "(per input FASTQ file)");
     fprintf(stdout, "\t%-20s%-20s\n", "-o <fastq_file>", "Desired fastq output file.");
@@ -126,8 +206,9 @@ process_options(int argc, char *argv[], options *opts) {
     int index;
     char *opt_o_value = NULL;
     char *opt_p_value = NULL;
+    char *opt_d_value = NULL;
 
-    while( (c = getopt(argc, argv, "hvbcm:o:p:C")) != -1 ) {
+    while( (c = getopt(argc, argv, "hvecfsm:o:p:d:CD:I:S:")) != -1 ) {
         switch(c) {
             case 'h':
                 help_message();
@@ -137,8 +218,8 @@ process_options(int argc, char *argv[], options *opts) {
                 version_info();
                 exit(0);
                 break;
-            case 'b':
-                opts->force_bitap = 1;
+            case 'e':
+                opts->force_tre = 1;
                 break;
             case 'o':
                 opt_o_value = optarg;
@@ -146,11 +227,33 @@ process_options(int argc, char *argv[], options *opts) {
             case 'p':
                 opt_p_value = optarg;
                 break;
+            case 'd':
+                opt_d_value = optarg;
+                break;
             case 'c':
                 opts->color = 1;
                 break;
+            case 'f':
+                opts->report_fasta = 1;
+                opts->report_fastq = 0;
+                opts->report_stats = 0;
+                break;
+            case 's':
+                opts->report_fasta = 0;
+                opts->report_fastq = 0;
+                opts->report_stats = 1;
+                break;
             case 'm':
-                opts->mismatches = atoi(optarg);
+                opts->max_mismatches = atoi(optarg);
+                break;
+            case 'I':
+                opts->cost_insertions = atoi(optarg);
+                break;
+            case 'D':
+                opts->cost_deletions = atoi(optarg);
+                break;
+            case 'S':
+                opts->cost_substitutions = atoi(optarg);
                 break;
             case 'C':
                 opts->count = 1;
@@ -173,15 +276,20 @@ process_options(int argc, char *argv[], options *opts) {
         strncpy(opts->search_pattern, opt_p_value, MAX_PATTERN_LENGTH);
     }
 
+    /* setup delimiter for stats report (if given) */
+    if ( opt_d_value != NULL ) {
+        strncpy(opts->delim, opt_d_value, MAX_DELIM_LENGTH);
+    }
+
     /* 
-       ensure the number of mismatches does not exceed the search
+       ensure the number of max_mismatches does not exceed the search
        pattern length 
     */
-    if ( opts->mismatches > strlen(opts->search_pattern) ) {
+    if ( opts->max_mismatches > strlen(opts->search_pattern) ) {
         fprintf(stderr, "%s : %s%d%s%zd%s\n", 
                         PRG_NAME,
                         "[err] The number of allowed mismatches (",
-                        opts->mismatches,
+                        opts->max_mismatches,
                         ") exceeds the search pattern length (",
                         strlen(opts->search_pattern),
                         ")" );
@@ -203,9 +311,7 @@ search_input_fastq_file(FILE *out_fp,
     gzFile fp;
     kseq_t *seq;
     int l, match_counter = 0;
-    char *substr_position_start = NULL;
-    char *substr_position_end = NULL;
-    int actual_mismatches = 0;
+    read_match match_info;
 
     // open the file handler
     if ( (fp = gzopen(input_fastq, "r")) == NULL ) {
@@ -231,49 +337,47 @@ search_input_fastq_file(FILE *out_fp,
             exit(1);
         }
 
-        if (opts.mismatches == 0 && opts.force_bitap == 0) {
+        /* initialize the match info structure */
+        match_info.sequence     = seq->seq.s;
+        match_info.substr_start = NULL;
+        match_info.substr_end   = NULL;
+        match_info.start_pos    = 0;
+        match_info.end_pos      = 0;
+
+        match_info.num_mismatches    = 0;
+        match_info.num_insertions    = 0;
+        match_info.num_deletions     = 0;
+        match_info.num_substitutions = 0;
+
+        if (opts.max_mismatches == 0 && opts.force_tre == 0) {
 //            fprintf(stdout, "Running boyer moore search\n");
-            substr_position_start = 
+            match_info.substr_start =
                 (char *) boyermoore_search( seq->seq.s, opts.search_pattern );
-            if (substr_position_start != NULL) {
-                substr_position_end =
-                    substr_position_start + strlen(opts.search_pattern);
+            if (match_info.substr_start != NULL) {
+                match_info.substr_end =
+                    match_info.substr_start + strlen(opts.search_pattern);
+                match_info.start_pos =
+                    (int) (match_info.substr_start - seq->seq.s);
+                match_info.end_pos =
+                    (int) ( match_info.start_pos + strlen(opts.search_pattern) );
             }
         }
         else {
-//            fprintf(stdout, "Running libbitap search\n");
-            substr_position_end =
-                 FindWithBitap(
-                        opts.bitap_regexp,
-                        seq->seq.s,
-                        strlen(seq->seq.s),
-                        opts.mismatches,
-                        &actual_mismatches,
-                        &substr_position_start
-                );
-//            fprintf(stdout, "substr_position_end : %p (%s) \n", substr_position_end, substr_position_end);
-//            fprintf(stdout, "substr_position_start : %p (%s) \n", substr_position_start, substr_position_start);
-//            fprintf(stdout, "mismatches : %d\n", opts.mismatches);
-//            fprintf(stdout, "acutal mismatches : %d\n", actual_mismatches);
+//            fprintf(stdout, "Running TRE search\n");
+            approximate_regexp_search( &opts, &match_info );
         }
 
-        if (substr_position_start != NULL) {
+        if (match_info.substr_start != NULL) {
             match_counter++;
             if (opts.count == 0)
-                display_read(
-                        out_fp,
-                        seq,
-                        substr_position_start,
-                        substr_position_end,
-                        opts
-                );
+                report_read( out_fp, &opts, seq, &match_info );
         }
     }
 
     kseq_destroy(seq); // destroy seq  
     gzclose(fp);       // close the file handler  
 
-    //fprintf(stdout, "Mismatch param is %d\n", opts.mismatches);
+    //fprintf(stdout, "Mismatch param is %d\n", opts.max_mismatches);
     if (opts.count == 1) {
         if (match_counter == 1) {
             fprintf(out_fp, "%s : %d match\n", input_fastq, match_counter);
@@ -284,58 +388,145 @@ search_input_fastq_file(FILE *out_fp,
     }
 }
 
-void 
-display_read(FILE *out_fp, 
-             const kseq_t *seq, 
-             const char *substr_position_start,
-             const char *substr_position_end,
-             const options opts) {
+void
+report_read(FILE *out_fp,
+            const options *opts,
+            const kseq_t *seq,
+            const read_match *info) {
+    if (opts->report_fasta) {
+        report_fasta(out_fp, opts, seq, info);
+    }
+    else if (opts->report_stats) {
+        report_stats(out_fp, opts, seq, info);
+    }
+    else {
+        report_fastq(out_fp, opts, seq, info);
+    }
+}
 
-    /* header portion of FASTQ read record */
-    fprintf(out_fp, "@%s\n", seq->name.s);
-
-    /* sequence portion of FASTQ read record */
-    if (opts.color == 1) {
-        char *sequence = seq->seq.s;
+void
+display_sequence(FILE *out_fp,
+                 const options *opts,
+                 const char *sequence,
+                 const char *substr_start,
+                 const char *substr_end) {
+    if (opts->color == 1) {
         size_t start, length;
 
-        if (sequence == substr_position_start) {
+        if (sequence == substr_start) {
             char *highlight = 
-                substring( sequence, 0, substr_position_end - sequence );
+                substring( sequence, 0, substr_end - sequence );
 
-            start  = substr_position_end - substr_position_start;
+            start  = substr_end - substr_start;
             length = strlen(sequence) -
-                     ( substr_position_end - substr_position_start );
+                     ( substr_end - substr_start );
 
             char *remainder =
                 substring( sequence, start, length );
 
-            fprintf(out_fp, "\033[31m%s\033[0m%s\n", highlight, remainder);
+            fprintf(out_fp, "\033[31m%s\033[0m%s", highlight, remainder);
             free(highlight);
             free(remainder);
         }
         else {
             start  = 0;
-            length = substr_position_start - sequence;
+            length = substr_start - sequence;
             char *begin = substring( sequence, start, length ); 
 
             start  = start + length;
-            length = substr_position_end - substr_position_start;
+            length = substr_end - substr_start;
             char *highlight = substring( sequence, start, length );
 
             start  = start + length;
             length = strlen(sequence) - start;
-            char *end = substring ( sequence, start, length );
+            char *end = substring( sequence, start, length );
 
-            fprintf(out_fp, "%s\033[31m%s\033[0m%s\n", begin, highlight, end);
+            fprintf(out_fp, "%s\033[31m%s\033[0m%s", begin, highlight, end);
             free(begin);
             free(highlight);
             free(end);
         }
     }
     else {
-        fprintf(out_fp, "%s\n", seq->seq.s);
+        fprintf(out_fp, "%s", sequence);
     }
+}
+
+void
+report_stats(FILE *out_fp,
+             const options *opts,
+             const kseq_t *seq,
+             const read_match *info) {
+    /*
+       stat report columns are
+        1. read_name
+        2. mismatches
+        3. num_ins
+        4. num_del
+        5. num_subst
+        6. start_pos
+        7. end_position
+        8. sequence string
+        9. quality string (if available)
+     */
+    fprintf(out_fp, "%s%s%d%s%d%s%d%s%d%s%d%s%d%s",
+            seq->name.s,
+            opts->delim,
+            info->num_mismatches,
+            opts->delim,
+            info->num_insertions,
+            opts->delim,
+            info->num_deletions,
+            opts->delim,
+            info->num_substitutions,
+            opts->delim,
+            info->start_pos,
+            opts->delim,
+            info->end_pos,
+            opts->delim
+    );
+    /* sequence portion of stats report */
+    display_sequence (out_fp, opts, seq->seq.s, info->substr_start,
+		      info->substr_end);
+
+    /* quality string portion of stats report */
+    if (seq->qual.l) {
+        fprintf(out_fp, "%s", opts->delim);
+        fprintf(out_fp, "%s\n", seq->qual.s);
+    }
+
+    /* termination of record line */
+    fprintf(out_fp, "\n");
+}
+
+void
+report_fasta(FILE *out_fp,
+             const options *opts,
+             const kseq_t *seq,
+             const read_match *info) {
+    /* header portion of FASTA read record */
+    fprintf(out_fp, ">%s\n", seq->name.s);
+
+    /* sequence portion of FASTA read record */
+    display_sequence (out_fp, opts, seq->seq.s, info->substr_start,
+		      info->substr_end);
+    fprintf(out_fp, "\n");
+}
+
+void
+report_fastq(FILE *out_fp,
+             const options *opts,
+             const kseq_t *seq,
+             const read_match *info) {
+
+    /* header portion of FASTQ read record */
+    fprintf(out_fp, "@%s\n", seq->name.s);
+
+    /* sequence portion of FASTQ read record */
+    char *sequence = seq->seq.s;
+    display_sequence (out_fp, opts, sequence, info->substr_start,
+		      info->substr_end);
+    fprintf(out_fp, "\n");
 
     /* comment portion of FASTQ read record */
     if (seq->comment.l) {
@@ -354,55 +545,100 @@ display_read(FILE *out_fp,
     }
 }
 
-void compile_bitap_regexp(bitapType *b, options *opts) {
-    size_t search_pattern_length;
-    char *bitap_search_pattern;
+void
+setup_tre(regaparams_t *params, regex_t *regexp, options *opts) {
+    /* Step 1: setup the TRE regexp matching parameters */
 
-    // We are implicitly looking for substring matches.  We do not
-    // want to match against the whole input read. According to
-    // http://rational.co.za/libbitap/ we must prefix and postfix the
-    // search pattern with '.*' for this to occur properly.
+    /* setup the default match parameters */
+    tre_regaparams_default(params);
 
-    search_pattern_length = strlen(".*")
-                            + strlen(opts->search_pattern)
-                            + strlen(".*");
+    /* Set the maximum number of errors allowed for a record to match. */
+    params->max_cost = opts->max_mismatches;
 
-    // account for NULL termination
-    bitap_search_pattern = malloc(search_pattern_length + 1);
-    if ( bitap_search_pattern == NULL ) {
-        fprintf(stderr, "%s : %s %s\n",
-                        PRG_NAME,
-                        "Trouble mallocing for bitap search pattern string.",
-                        "Out of memory!");
+    /* Set the insertion, deletion, substitution costs. */
+    params->cost_ins = opts->cost_insertions;
+    params->cost_del = opts->cost_deletions;
+    params->cost_subst = opts->cost_substitutions;
+
+    /* Step 2: compile the regex */
+
+    /*
+       always allowing for POSIX extended regular expression syntax
+       (REG_EXTENDED)
+       always being case insenstive with the regular expression
+       (REG_ICASE)
+    */
+    int errcode;
+    int comp_flags  = REG_EXTENDED | REG_ICASE ;
+    errcode = tre_regcomp(regexp, opts->search_pattern, comp_flags);
+    if (errcode) {
+        char errbuf[256];
+        tre_regerror(errcode, regexp, errbuf, sizeof(errbuf));
+        fprintf(stderr, "%s: %s: -- %s -- %s\n",
+          PRG_NAME,
+              "Error in compiling search pattern",
+              opts->search_pattern,
+              errbuf
+        );
         exit(1);
     }
 
-    // initialize the string to NULLs
-    memset(bitap_search_pattern, '\0', search_pattern_length + 1);
+    /* Step 3: assign to opts hash */
+    opts->tre_regex = regexp;
+    opts->tre_regex_match_params = params;
+}
 
-    // construct the appropriate bitap search pattern string
-    strcat(bitap_search_pattern, ".*");
-    strcat(bitap_search_pattern, opts->search_pattern);
-    strcat(bitap_search_pattern, ".*");
+void
+approximate_regexp_search(const options *opts, read_match *info) {
+    int errcode;
+    regmatch_t pmatch = { 0, 0 };     /* matched pattern structure */
+    regamatch_t match;                /* overall match structure */
 
-//    fprintf(stdout, "bitap_search_pattern is: |%s|\n", bitap_search_pattern);
+    /* initialize the overall match struct */
+    memset(&match, 0, sizeof(match));
+    /* assign default pattern structure */
+    match.pmatch = &pmatch;
+    /* initialization of pmatch array */
+    match.nmatch = 1;
 
-    // compile the bitap search string according to the libbitap protocol
-    int result = NewBitap(b, bitap_search_pattern);
-    if (result < 0) {
-        fprintf(stderr, "%s : %s '%s' %s %d\n",
-                        PRG_NAME,
-                        "[err] Trouble compiling bitap search pattern",
-                        opts->search_pattern,
-                        "at character position ",
-                        (-1) * result );
+    /* perform the regexp search on the sequence string */
+    errcode = tre_regaexec(
+            opts->tre_regex,
+            info->sequence,
+            &match,
+            *(opts->tre_regex_match_params),
+            0
+    );
+
+    if (errcode != REG_OK) {
+//        fprintf(stdout, "Found no matches!\n");
+//        fprintf(stdout, "%6s : %s\n", "regexp", opts->search_pattern);
+//        fprintf(stdout, "%6s : %s\n", "record", sequence);
+        return;
     }
 
-    // assign it to our options data structure
-    opts->bitap_regexp = b;
+    /* found a match! */
 
-    // free the search string
-    free(bitap_search_pattern);
+    info->num_mismatches    = match.cost;
+    info->num_insertions    = match.num_ins;
+    info->num_deletions     = match.num_del;
+    info->num_substitutions = match.num_subst;
+    info->start_pos         = pmatch.rm_so;
+    info->end_pos           = pmatch.rm_eo;
+
+    info->substr_start      = info->sequence + (size_t) info->start_pos;
+    info->substr_end        = info->substr_start + (size_t) info->end_pos;
+
+//    fprintf(stdout, "Found match!\n");
+//    fprintf(stdout, "\t%10s : %s\n", "record", info->sequence);
+//    fprintf(stdout, "\t%10s : %s\n", "pattern", opts->search_pattern);
+//    fprintf(stdout, "\t%10s : %4d\n", "cost", match.cost);
+//    fprintf(stdout, "\t%10s : %4d\n", "num_ins", match.num_ins);
+//    fprintf(stdout, "\t%10s : %4d\n", "num_del", match.num_del);
+//    fprintf(stdout, "\t%10s : %4d\n", "num_subst", match.num_subst);
+//    fprintf(stdout, "\t%10s : %2d - %2d\n", "char pos",
+//                                            pmatch.rm_so, pmatch.rm_eo);
+
 }
 
 char* 

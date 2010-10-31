@@ -80,7 +80,9 @@ void  display_sequence(FILE *out_fp,
                        const options *opts,
                        const char *sequence,
                        const char *substr_start,
-                       const char *substr_end);
+                       const char *substr_end,
+                       const int  start_pos,
+                       const int  end_pos);
 void  setup_tre(regaparams_t *params, regex_t *regexp, options *opts);
 void  approximate_regexp_search(const options *opts, read_match *info);
 char* substring(const char *str, size_t start, size_t len);
@@ -180,7 +182,7 @@ help_message() {
     fprintf(stdout, "\t%-20s%-20s\n", "-s", "Output matches in detailed stats report format");
     fprintf(stdout, "\t%-20s%-20s\n", "-d", "Delimiter string to separate columns");
     fprintf(stdout, "\t%-20s%-20s\n", "", "in detailed stats report [Default: '\\t']");
-    fprintf(stdout, "\t%-20s%-20s\n", "-m", "Total Number of mismatches to at most allow for");
+    fprintf(stdout, "\t%-20s%-20s\n", "-m", "Total number of mismatches to at most allow for");
     fprintf(stdout, "\t%-20s%-20s\n", "", "in search pattern [Default: 0]");
     fprintf(stdout, "\t%-20s%-20s\n", "-I", "Cost of base insertions in obtaining");
     fprintf(stdout, "\t%-20s%-20s\n", "", "approximate match [Default: 1]");
@@ -191,7 +193,7 @@ help_message() {
     fprintf(stdout, "\t%-20s%-20s\n", "-e", "Force tre regexp engine usage");
     fprintf(stdout, "\t%-20s%-20s\n", "-C", "Display only a total count of matches");
     fprintf(stdout, "\t%-20s%-20s\n", "", "(per input FASTQ file)");
-    fprintf(stdout, "\t%-20s%-20s\n", "-o <fastq_file>", "Desired fastq output file.");
+    fprintf(stdout, "\t%-20s%-20s\n", "-o <out_file>", "Desired output file.");
     fprintf(stdout, "\t%-20s%-20s\n", "", "If not specified, defaults to stdout");
 }
 
@@ -409,7 +411,9 @@ display_sequence(FILE *out_fp,
                  const options *opts,
                  const char *sequence,
                  const char *substr_start,
-                 const char *substr_end) {
+                 const char *substr_end,
+                 const int  start_pos,
+                 const int  end_pos) {
     if (opts->color == 1) {
         size_t start, length;
 
@@ -431,10 +435,10 @@ display_sequence(FILE *out_fp,
         else {
             start  = 0;
             length = substr_start - sequence;
-            char *begin = substring( sequence, start, length ); 
+            char *begin = substring( sequence, start, length );
 
             start  = start + length;
-            length = substr_end - substr_start;
+            length = (size_t) (end_pos - start_pos);
             char *highlight = substring( sequence, start, length );
 
             start  = start + length;
@@ -464,7 +468,7 @@ report_stats(FILE *out_fp,
         3. num_ins
         4. num_del
         5. num_subst
-        6. start_pos
+        6. start_position
         7. end_position
         8. sequence string
         9. quality string (if available)
@@ -486,8 +490,13 @@ report_stats(FILE *out_fp,
             opts->delim
     );
     /* sequence portion of stats report */
-    display_sequence (out_fp, opts, seq->seq.s, info->substr_start,
-		      info->substr_end);
+    display_sequence (out_fp,
+                      opts,
+                      seq->seq.s,
+                      info->substr_start,
+                      info->substr_end,
+                      info->start_pos,
+                      info->end_pos);
 
     /* quality string portion of stats report */
     if (seq->qual.l) {
@@ -508,8 +517,13 @@ report_fasta(FILE *out_fp,
     fprintf(out_fp, ">%s\n", seq->name.s);
 
     /* sequence portion of FASTA read record */
-    display_sequence (out_fp, opts, seq->seq.s, info->substr_start,
-		      info->substr_end);
+    display_sequence (out_fp,
+                      opts,
+                      seq->seq.s,
+                      info->substr_start,
+                      info->substr_end,
+                      info->start_pos,
+                      info->end_pos);
     fprintf(out_fp, "\n");
 }
 
@@ -523,9 +537,13 @@ report_fastq(FILE *out_fp,
     fprintf(out_fp, "@%s\n", seq->name.s);
 
     /* sequence portion of FASTQ read record */
-    char *sequence = seq->seq.s;
-    display_sequence (out_fp, opts, sequence, info->substr_start,
-		      info->substr_end);
+    display_sequence (out_fp,
+                      opts,
+                      seq->seq.s,
+                      info->substr_start,
+                      info->substr_end,
+                      info->start_pos,
+                      info->end_pos);
     fprintf(out_fp, "\n");
 
     /* comment portion of FASTQ read record */

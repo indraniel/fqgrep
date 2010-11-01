@@ -461,6 +461,8 @@ report_stats(FILE *out_fp,
              const options *opts,
              const kseq_t *seq,
              const read_match *info) {
+
+    static int header_flag = 0;
     /*
        stat report columns are
         1. read_name
@@ -473,6 +475,35 @@ report_stats(FILE *out_fp,
         8. sequence string
         9. quality string (if available)
      */
+
+    if (header_flag == 0) {
+        fprintf(out_fp, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                "read name",
+                opts->delim,
+                "total mismatches",
+                opts->delim,
+                "# insertions",
+                opts->delim,
+                "# deletions",
+                opts->delim,
+                "# substitutions",
+                opts->delim,
+                "start position",
+                opts->delim,
+                "end position",
+                opts->delim,
+                "sequence"
+        );
+
+         /* quality string portion of header */
+        if (seq->qual.l) {
+            fprintf(out_fp, "%s", opts->delim);
+            fprintf(out_fp, "%s", "quality");
+        }
+        fprintf(out_fp, "\n");
+        header_flag = 1;
+    }
+
     fprintf(out_fp, "%s%s%d%s%d%s%d%s%d%s%d%s%d%s",
             seq->name.s,
             opts->delim,

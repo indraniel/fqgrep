@@ -15,26 +15,36 @@
 #define PRG_NAME "tre-test"
 #define MAX_CHAR 1024
 
+/* P R O T O T Y P E S *******************************************************/
+int  process_options(int argc, char *argv[]);
+void help_message(void);
+
+/* G L O B A L S *************************************************************/
+int cost_ins  = 1;
+int cost_del  = 1;
+int cost_subs = 1;
+int max_cost  = 1;
+char record[MAX_CHAR] = "";
+char regexp[MAX_CHAR] = "";
+
 /* M A I N *******************************************************************/
 int main(int argc, char *argv[]) {
-    char record[MAX_CHAR] = "";
-    char regexp[MAX_CHAR] = "";
+    int opt_index;
 
-    if (argv[1])
-      strncpy (regexp, argv[1], MAX_CHAR);
+    opt_index = process_options(argc, argv);
 
-    if ( strlen(regexp) == 0 ) {
-        fprintf(stdout, "Please enter a regexp pattern!\n");
-        fprintf(stdout, "Usage: %s %s %s\n", PRG_NAME, "[PATTERN]", "[STRING]");
+    if (opt_index >= argc) {
+        fprintf(stderr, "%s : %s\n",
+                        PRG_NAME, "[err] specify a record string to process!");
         exit(1);
     }
 
-    if (argv[2])
-      strncpy (record, argv[2], MAX_CHAR);
+    if (argv[1])
+      strncpy (record, argv[opt_index], MAX_CHAR);
 
     if ( strlen(record) == 0 ) {
-        fprintf(stdout, "Please enter a string to search pattern for!\n");
-        fprintf(stdout, "Usage: %s %s %s\n", PRG_NAME, "[PATTERN]", "[STRING]");
+        fprintf(stdout, "Please enter a valid string to search pattern for!\n");
+        fprintf(stdout, "Usage: %s %s %s %s\n", PRG_NAME, "[COSTS]", "[PATTERN]", "[STRING]");
         exit(1);
     }
 
@@ -60,7 +70,10 @@ int main(int argc, char *argv[]) {
     /* setup the default match parameters */
     tre_regaparams_default(&match_params);
     /* Set the maximum number of errors allowed for a record to match. */
-    match_params.max_cost = 1;
+    match_params.max_cost   = max_cost;
+    match_params.cost_ins   = cost_ins;
+    match_params.cost_del   = cost_del;
+    match_params.cost_subst = cost_subs;
 
     fprintf(stdout, "Default regex params set by TRE:\n");
     fprintf(stdout, "\t%-12s : %4d\n", "cost_ins", match_params.cost_ins);
@@ -113,4 +126,66 @@ int main(int argc, char *argv[]) {
     }
 
     return 0;
+}
+
+int
+process_options(int argc, char *argv[]) {
+    int c;
+    int index;
+    char *opt_p_value = NULL;
+
+    while( (c = getopt(argc, argv, "hp:D:I:S:m:")) != -1 ) {
+        switch(c) {
+            case 'h':
+                help_message();
+                exit(0);
+                break;
+            case 'p':
+                opt_p_value = optarg;
+                break;
+            case 'm':
+                max_cost = atoi(optarg);
+                break;
+            case 'I':
+                cost_ins = atoi(optarg);
+                break;
+            case 'D':
+                cost_del = atoi(optarg);
+                break;
+            case 'S':
+                cost_subs = atoi(optarg);
+                break;
+            case '?':
+                exit(1);
+             default:
+                abort();
+        }
+    }
+
+    /* ascertain whether a query pattern was given */
+    if ( opt_p_value == NULL ) {
+        fprintf(stderr, "%s : %s\n", PRG_NAME,
+                        "[err] Specify a search pattern via the '-p' option!");
+        exit(1);
+    }
+    else {
+        strncpy(regexp, opt_p_value, MAX_CHAR);
+    }
+
+    return optind;
+}
+
+void
+help_message() {
+    fprintf(stdout, "Usage: %s %s %s %s\n",
+                    PRG_NAME, "[options]", "-p <pattern>", "<STRING>");
+    fprintf(stdout, "\t%-20s%-20s\n", "-h", "This help message");
+    fprintf(stdout, "\t%-20s%-20s\n", "-p", "Pattern of interest to grep [REQUIRED]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-m", "Total number of mismatches to at most allow for");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "in search pattern [Default: 0]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-I", "Cost of base insertions in obtaining");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "approximate match [Default: 1]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-D", "Cost of base deletions in obtaining");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "approximate match [Default: 1]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-S", "Cost of base substitutions in obtaining");
 }

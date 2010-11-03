@@ -1,6 +1,7 @@
 /* I N C L U D E S ***********************************************************/
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include <unistd.h>
 #include <zlib.h>  
@@ -27,6 +28,9 @@ typedef struct {
     int cost_insertions;
     int cost_deletions;
     int cost_substitutions;
+    int max_insertions;
+    int max_deletions;
+    int max_substitutions;
     char output_fastq[FASTQ_FILENAME_MAX_LENGTH];
     char search_pattern[MAX_PATTERN_LENGTH];
     char delim[MAX_DELIM_LENGTH];         /* delimiter used in stats report */
@@ -110,6 +114,9 @@ int main(int argc, char *argv[]) {
         1,            // cost of insertions
         1,            // cost of deletions
         1,            // cost of substitutions
+        INT_MAX,      // maxiumum allowable insertions in match
+        INT_MAX,      // maxiumum allowable deletions in match
+        INT_MAX,      // maxiumum allowable substitutions in match
         {'\0'},       // output fastq file name
         {'\0'},       // search pattern string
         "\t",         // delimiter string for stats report
@@ -179,11 +186,17 @@ help_message() {
     fprintf(stdout, "\t%-20s%-20s\n", "-p", "Pattern of interest to grep [REQUIRED]");
     fprintf(stdout, "\t%-20s%-20s\n", "-c", "Highlight matching string with color");
     fprintf(stdout, "\t%-20s%-20s\n", "-f", "Output matches in FASTA format");
-    fprintf(stdout, "\t%-20s%-20s\n", "-s", "Output matches in detailed stats report format");
-    fprintf(stdout, "\t%-20s%-20s\n", "-d", "Delimiter string to separate columns");
+    fprintf(stdout, "\t%-20s%-20s\n", "-r", "Output matches in detailed stats report format");
+    fprintf(stdout, "\t%-20s%-20s\n", "-b", "Delimiter string to separate columns");
     fprintf(stdout, "\t%-20s%-20s\n", "", "in detailed stats report [Default: '\\t']");
     fprintf(stdout, "\t%-20s%-20s\n", "-m", "Total number of mismatches to at most allow for");
     fprintf(stdout, "\t%-20s%-20s\n", "", "in search pattern [Default: 0]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-s", "Max threshold of substitution mismatches to allow for");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "in search pattern [Default: unlimited]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-i", "Max threshold of insertion mismatches to allow for");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "in search pattern [Default: unlimited]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-d", "Max threshold of deletion mismatches to allow for");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "in search pattern [Default: unlimited]");
     fprintf(stdout, "\t%-20s%-20s\n", "-I", "Cost of base insertions in obtaining");
     fprintf(stdout, "\t%-20s%-20s\n", "", "approximate match [Default: 1]");
     fprintf(stdout, "\t%-20s%-20s\n", "-D", "Cost of base deletions in obtaining");
@@ -208,9 +221,9 @@ process_options(int argc, char *argv[], options *opts) {
     int index;
     char *opt_o_value = NULL;
     char *opt_p_value = NULL;
-    char *opt_d_value = NULL;
+    char *opt_b_value = NULL;
 
-    while( (c = getopt(argc, argv, "hvecfsm:o:p:d:CD:I:S:")) != -1 ) {
+    while( (c = getopt(argc, argv, "hvecfrm:i:s:d:o:p:b:CD:I:S:")) != -1 ) {
         switch(c) {
             case 'h':
                 help_message();
@@ -229,8 +242,8 @@ process_options(int argc, char *argv[], options *opts) {
             case 'p':
                 opt_p_value = optarg;
                 break;
-            case 'd':
-                opt_d_value = optarg;
+            case 'b':
+                opt_b_value = optarg;
                 break;
             case 'c':
                 opts->color = 1;
@@ -240,13 +253,22 @@ process_options(int argc, char *argv[], options *opts) {
                 opts->report_fastq = 0;
                 opts->report_stats = 0;
                 break;
-            case 's':
+            case 'r':
                 opts->report_fasta = 0;
                 opts->report_fastq = 0;
                 opts->report_stats = 1;
                 break;
             case 'm':
                 opts->max_mismatches = atoi(optarg);
+                break;
+            case 'i':
+                opts->max_insertions = atoi(optarg);
+                break;
+            case 's':
+                opts->max_substitutions = atoi(optarg);
+                break;
+            case 'd':
+                opts->max_deletions = atoi(optarg);
                 break;
             case 'I':
                 opts->cost_insertions = atoi(optarg);
@@ -279,8 +301,8 @@ process_options(int argc, char *argv[], options *opts) {
     }
 
     /* setup delimiter for stats report (if given) */
-    if ( opt_d_value != NULL ) {
-        strncpy(opts->delim, opt_d_value, MAX_DELIM_LENGTH);
+    if ( opt_b_value != NULL ) {
+        strncpy(opts->delim, opt_b_value, MAX_DELIM_LENGTH);
     }
 
     /* 
@@ -608,6 +630,11 @@ setup_tre(regaparams_t *params, regex_t *regexp, options *opts) {
     params->cost_ins = opts->cost_insertions;
     params->cost_del = opts->cost_deletions;
     params->cost_subst = opts->cost_substitutions;
+
+    /* Set the max insertion, deletion, substitution allowances. */
+    params->max_ins = opts->max_insertions;
+    params->max_del = opts->max_deletions;
+    params->max_subst = opts->max_substitutions;
 
     /* Step 2: compile the regex */
 

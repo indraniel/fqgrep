@@ -485,21 +485,24 @@ report_stats(FILE *out_fp,
              const read_match *info) {
 
     static int header_flag = 0;
+    char *match = NULL;
+
     /*
        stat report columns are
-        1. read_name
-        2. mismatches
-        3. num_ins
-        4. num_del
-        5. num_subst
-        6. start_position
-        7. end_position
-        8. sequence string
-        9. quality string (if available)
+         1. read_name
+         2. mismatches
+         3. num_ins
+         4. num_del
+         5. num_subst
+         6. start_position
+         7. end_position
+         8. match string
+         9. sequence string
+        10. quality string (if available)
      */
 
     if (header_flag == 0) {
-        fprintf(out_fp, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+        fprintf(out_fp, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                 "read name",
                 opts->delim,
                 "total mismatches",
@@ -513,6 +516,8 @@ report_stats(FILE *out_fp,
                 "start position",
                 opts->delim,
                 "end position",
+                opts->delim,
+                "match string",
                 opts->delim,
                 "sequence"
         );
@@ -542,6 +547,17 @@ report_stats(FILE *out_fp,
             info->end_pos,
             opts->delim
     );
+
+    /* match string portion of stats report */
+    size_t start, length;
+
+    start  = (size_t) info->start_pos;
+    length = (size_t) (info->end_pos - info->start_pos);
+
+    match = substring( seq->seq.s, start, length );
+    fprintf(out_fp, "%s%s", match, opts->delim);
+    free(match);
+
     /* sequence portion of stats report */
     display_sequence (out_fp,
                       opts,

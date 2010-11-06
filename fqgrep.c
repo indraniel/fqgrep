@@ -570,7 +570,7 @@ report_stats(FILE *out_fp,
     /* quality string portion of stats report */
     if (seq->qual.l) {
         fprintf(out_fp, "%s", opts->delim);
-        fprintf(out_fp, "%s\n", seq->qual.s);
+        fprintf(out_fp, "%s", seq->qual.s);
     }
 
     /* termination of record line */

@@ -344,7 +344,7 @@ sub check_architecture {
 
 __END__
 
-# S U B R O U T I N E S #######################################################
+# D O C U M E N T A T I O N ###################################################
 =head1 NAME
 
 fqgrep-trim.pl - a "trimmer" wrapped around fqgrep

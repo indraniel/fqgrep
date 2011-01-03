@@ -305,21 +305,6 @@ process_options(int argc, char *argv[], options *opts) {
         strncpy(opts->delim, opt_b_value, MAX_DELIM_LENGTH);
     }
 
-    /* 
-       ensure the number of max_mismatches does not exceed the search
-       pattern length 
-    */
-    if ( opts->max_mismatches > strlen(opts->search_pattern) ) {
-        fprintf(stderr, "%s : %s%d%s%zd%s\n", 
-                        PRG_NAME,
-                        "[err] The number of allowed mismatches (",
-                        opts->max_mismatches,
-                        ") exceeds the search pattern length (",
-                        strlen(opts->search_pattern),
-                        ")" );
-        exit(1);
-    }
-
     /* appropriately note output file (if given) */
     if ( opt_o_value != NULL ) {
         strncpy(opts->output_fastq, opt_o_value, FASTQ_FILENAME_MAX_LENGTH);

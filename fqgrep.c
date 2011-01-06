@@ -213,6 +213,9 @@ help_message() {
 void
 version_info() {
     fprintf(stdout, "%s -- version: %s\n", PRG_NAME, VERSION);
+    fprintf(stdout, "%s --  %s:%s\n",
+            "Author", "Indraniel Das",
+            "<idas at wustl dot edu> or <indraniel at gmail dot com>");
 }
 
 int

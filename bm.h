@@ -1,3 +1,20 @@
+/* L I C E N S E *************************************************************/
+/*
+
+   Copyright (C) 2010, 2011 Wikipedia®
+   http://en.wikipedia.org/wiki/Wikipedia:About
+
+   This work is licensed under a Creative Commons Attribution-ShareAlike
+   3.0 Unported License (http://creativecommons.org/licenses/by-sa/3.0/)
+*/
+
+/* N O T E S *****************************************************************/
+/* Boyer-Moore search algorithm
+
+   Taken from wikipedia:
+   http://en.wikipedia.org/wiki/Boyer%E2%80%93Moore_string_search_algorithm
+*/
+
 #ifndef _BM_H_
 #define _BM_H_
 

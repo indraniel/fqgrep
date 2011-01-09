@@ -1,6 +1,29 @@
+/* L I C E N S E *************************************************************/
+
+/*
+    Copyright (C) 2010, 2011 Indraniel Das <indraniel@gmail.com>
+                             and Washington University in St. Louis
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <http://www.gnu.org/licenses/>
+*/
+
 /* N O T E S *****************************************************************/
 /* compliation line:
    gcc -g -o tre-test -ltre tre-test.c
+
+   This is just a simple program to test out and understand
+   how to use the libtre library (http://laurikari.net/tre/).
 */
 
 /* I N C L U D E S ***********************************************************/

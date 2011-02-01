@@ -49,7 +49,7 @@ my $result = GetOptions(
     "read-length-histogram"          => \$opt_read_length_histogram,
     "read-count-histogram"           => \$opt_read_count_histogram,
     "fqgrep=s"                       => \$fqgrep,
-    "trim"                           => \$opt_trim,
+    "trim=s"                         => \$opt_trim,
     "help"                           => \$opt_help
 );
 

@@ -35,7 +35,7 @@ $| = 1; # enable AUTOFLUSH mode
 # Setup Default options
 my ($opt_fastq, @opt_mismatches, $opt_adaptor);
 my $opt_read_length_histogram;
-my $opt_read_mismatch_count_histogram;
+my $opt_read_count_histogram;
 my $fqgrep = qx(which fqgrep) || undef; # assuming fqgrep is somewhere in $PATH
 my $opt_trim = "left";
 my $opt_format = 'FASTQ';
@@ -46,7 +46,7 @@ my $result = GetOptions(
     "mismatches=i{,}"                => \@opt_mismatches,
     "adaptor=s"                      => \$opt_adaptor,
     "read-length-histogram"          => \$opt_read_length_histogram,
-    "read-mismatch-count-histogram"  => \$opt_read_mismatch_count_histogram,
+    "read-count-histogram"           => \$opt_read_count_histogram,
     "fqgrep=s"                       => \$fqgrep,
     "trim"                           => \$opt_trim
 );
@@ -99,9 +99,9 @@ unless ($opt_read_length_histogram) {
     $opt_read_length_histogram = $fastq->basename . '.read_length_histogram.dat';
 }
 
-unless ($opt_read_mismatch_count_histogram) {
-    $opt_read_mismatch_count_histogram =
-      $fastq->basename . '.read_mismatch_count_histogram.dat';
+unless ($opt_read_count_histogram) {
+    $opt_read_count_histogram =
+      $fastq->basename . '.read_count_histogram.dat';
 }
 
 print "Processing original fastq file: $fastq \n";
@@ -118,7 +118,7 @@ my $stats = trim_file(
 # setup the files that the collected statistics will be filled into
 my $rl_hist_file = Path::Class::File->new($opt_read_length_histogram);
 my $rmc_hist_file =
-  Path::Class::File->new($opt_read_mismatch_count_histogram);
+  Path::Class::File->new($opt_read_count_histogram);
 my $overall_filter_count_file =
   Path::Class::File->new($fastq->basename . '.cnt');
 
@@ -126,7 +126,7 @@ dump_stats(
     stats                         => $stats,
     mismatches                    => \@opt_mismatches,
     read_length_histogram         => $rl_hist_file,
-#    read_mismatch_count_histogram => $rmc_hist_file,
+#    read_count_histogram          => $rmc_hist_file,
     overall_filter_count          => $overall_filter_count_file,
     fastq                         => $fastq
 );
@@ -429,7 +429,7 @@ sub dump_stats {
     my ($stats, $mismatches, $rlh_file, $rmch_file, $overall_cnt_file, $fastq)
       = @args{
         'stats',                 'mismatches',
-        'read_length_histogram', 'read_mismatch_count_histogram',
+        'read_length_histogram', 'read_count_histogram',
         'overall_filter_count',  'fastq'
       };
 
@@ -556,7 +556,7 @@ The number of allowable mismatches to filter adaptors for (default
 Name of the read length histogram statistics file (default:
 <fastq-file>.rlh.dat)
 
-=item B<--read-mismatch-count-histogram=FILENAME>
+=item B<--read-count-histogram=FILENAME>
 
 Name of the read mismatch count histogram statistics file (default:
 <fastq-file>.rcmh.dat)
@@ -608,7 +608,7 @@ current working directory as well:
 
     Contains a table of the read length counts for a given mismatch level.
 
-  * <input-filename>.read_mismatch_count_histogram.dat
+  * <input-filename>.read_count_histogram.dat
 
     Contains a table of the number of counts of reads trimmed and omitted
     for a given mismatch level.

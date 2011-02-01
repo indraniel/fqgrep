@@ -1,13 +1,28 @@
-#!/gsc/bin/perl
+#!/usr/bin/env perl
+
+# L I C E N S E ###############################################################
+#    Copyright (C) 2010, 2011 Indraniel Das <indraniel@gmail.com>
+#                             and Washington University in St. Louis
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, see <http://www.gnu.org/licenses/>
 
 # P R A G M A S ###############################################################
 use warnings;
 use strict;
 
 # M O D U L E S ###############################################################
-use POSIX;
-use YAML::Syck;
-use Sys::Hostname;
+#use YAML::Syck;
 use Time::HiRes qw(gettimeofday tv_interval);
 use Path::Class;
 use File::Basename;
@@ -18,26 +33,38 @@ use Getopt::Long;
 $| = 1; # enable AUTOFLUSH mode
 
 # Setup Default options
-my $opt_fastq =
-  '/gscmnt/sata141/techd/twylie/miRNA_20100507/seq/s_1_sequence.fastq';
-my @opt_mismatches;
-my $opt_adaptor = 'ATCTCGTATGCCGTCTTCTGCTTGC.*$';
-my $opt_no_trim  = 0;
-my $opt_no_plot  = 0;
+my ($opt_fastq, @opt_mismatches, $opt_adaptor);
 my $opt_read_length_histogram;
 my $opt_read_mismatch_count_histogram;
-my $fqgrep = '/gscuser/idas/git/fqgrep/fqgrep';
+my $fqgrep = qx(which fqgrep) || undef; # assuming fqgrep is somewhere in $PATH
+my $opt_trim = "left";
+my $opt_format = 'FASTQ';
 
 # parse options
 my $result = GetOptions(
-    "fastq=s"               => \$opt_fastq,
-    "mismatches=i{,}"        => \@opt_mismatches,
-    "adaptor=s"             => \$opt_adaptor,
-    "no-trim"               => \$opt_no_trim,
-    "no-plot"               => \$opt_no_plot,
-    "read-length-histogram" => \$opt_read_length_histogram,
-    "read-mismatch-count-histogram"  => \$opt_read_mismatch_count_histogram
+    "input=s"                        => \$opt_fastq,
+    "mismatches=i{,}"                => \@opt_mismatches,
+    "adaptor=s"                      => \$opt_adaptor,
+    "read-length-histogram"          => \$opt_read_length_histogram,
+    "read-mismatch-count-histogram"  => \$opt_read_mismatch_count_histogram,
+    "fqgrep=s"                       => \$fqgrep,
+    "trim"                           => \$opt_trim
 );
+
+# ensure that fqgrep is found and runnable
+unless ($fqgrep) {
+    die "[err] Could not find the location to fqgrep!\n";
+}
+chomp($fqgrep);
+$fqgrep = Path::Class::File->new($fqgrep);
+
+unless (-e $fqgrep) {
+    die "[err] Did not find fqgrep at : $fqgrep !\n";
+}
+
+unless (-x $fqgrep) {
+    die "[err] fqgrep ($fqgrep) is not executable!\n";
+}
 
 # ensure input fastq/a file existance
 unless ($opt_fastq) {
@@ -51,35 +78,49 @@ unless($opt_adaptor) {
     die "[err] Need to pass an adaptor sequence to trim for via --adaptor!\n";
 }
 
+# ensure that there is a trim type
+unless ($opt_trim =~/(left|right)/i) {
+    die "[err] Need to provide a correct --trim type: 'left' or 'right' !\n";
+}
+
 # ensure a mismatch level
 unless (@opt_mismatches) {
     @opt_mismatches = qw(0);
 }
 
+# ensure there is an appropriate output format
+unless ($opt_format =~ /^FAST(A|Q)$/) {
+    die "[err] The format option ($opt_format) is not valid. ",
+        "It should be either 'FASTA' or 'FASTQ'!\n";
+}
+
 # ensure output stat dump file names
 unless ($opt_read_length_histogram) {
-    $opt_read_length_histogram = $fastq->basename . '.rlh.dat';
+    $opt_read_length_histogram = $fastq->basename . '.read_length_histogram.dat';
 }
 
 unless ($opt_read_mismatch_count_histogram) {
-    $opt_read_mismatch_count_histogram = $fastq->basename . '.rcmh.dat';
+    $opt_read_mismatch_count_histogram =
+      $fastq->basename . '.read_mismatch_count_histogram.dat';
 }
-
-# ensure that we are running on a 64-bit machine (for fqgrep)
-check_architecture();
 
 print "Processing original fastq file: $fastq \n";
 
-my $stats = trim(
+# Performing trimming on the file and collect relevant statistics
+my $stats = trim_file(
     input      => $fastq,
     mismatches => \@opt_mismatches,
     adaptor    => $opt_adaptor,
-    no_trim    => $opt_no_trim,
+    trim_type  => $opt_trim,
+    format     => $opt_format
 );
 
+# setup the files that the collected statistics will be filled into
 my $rl_hist_file = Path::Class::File->new($opt_read_length_histogram);
-my $rmc_hist_file = Path::Class::File->new($opt_read_mismatch_count_histogram);
-my $overall_filter_count_file = Path::Class::File->new($fastq->basename . '.cnt');
+my $rmc_hist_file =
+  Path::Class::File->new($opt_read_mismatch_count_histogram);
+my $overall_filter_count_file =
+  Path::Class::File->new($fastq->basename . '.cnt');
 
 dump_stats(
     stats                         => $stats,
@@ -90,30 +131,25 @@ dump_stats(
     fastq                         => $fastq
 );
 
-unless ($opt_no_plot) {
-    plot(
-        mismatches                    => \@opt_mismatches,
-        read_length_histogram         => $rl_hist_file,
-        overall_filter_count          => $overall_filter_count_file,
-    );
-}
-
 exit(0);
 
 # S U B R O U T I N E S #######################################################
-sub trim {
+sub trim_file {
     my %args = @_;
-    my ($input, $mismatches, $adaptor, $no_trim) =
-      @args{'input', 'mismatches', 'adaptor', 'no_trim'};
+    my ($input, $mismatches, $adaptor, $trim_type, $format) =
+      @args{'input', 'mismatches', 'adaptor', 'trim_type', 'format'};
+
+    my $adaptor_pattern = adjust_adaptor_regex($adaptor, $trim_type);
     
     my %all_stats;
     for my $mismatch (@{$mismatches}) {
         print "Working on mismatch : $mismatch", "\n";
-        my $stats = run_fqgrep(
-            mismatch => $mismatch,
-            pattern  => $adaptor,
-            fastq    => $input,
-            no_trim  => $no_trim
+        my $stats = run_fqgrep_and_trim_reads(
+            mismatch  => $mismatch,
+            pattern   => $adaptor_pattern,
+            fastq     => $input,
+            trim_type => $trim_type,
+            format    => $format
         );
         $all_stats{$mismatch} = $stats;
     }
@@ -121,10 +157,32 @@ sub trim {
     return \%all_stats;
 }
 
-sub run_fqgrep {
+# ensure that the '^' or '$' anchor is placed for respective
+# 'left' or 'right' end trimming.
+sub adjust_adaptor_regex {
+    my ($adaptor, $trim_type) = @_;
+
+    my $adaptor_pattern = $adaptor;
+
+    # handle left-side "start" trimming
+    if ($trim_type =~ /left/i) {
+        unless ($adaptor =~ /^\^/) {
+            $adaptor_pattern = '^' . $adaptor;
+        }
+        return $adaptor_pattern;
+    }
+
+    # handle right-side "end" trimming
+    unless ($adaptor =~ /\$$/) {
+        $adaptor_pattern = $adaptor . '$';
+    }
+    return $adaptor_pattern;
+}
+
+sub run_fqgrep_and_trim_reads {
     my %args = @_;
-    my ($mismatch, $pattern, $fastq, $no_trim) =
-      @args{'mismatch', 'pattern', 'fastq', 'no_trim'};
+    my ($mismatch, $pattern, $fastq, $trim_type, $format) =
+      @args{'mismatch', 'pattern', 'fastq', 'trim_type', 'format'};
 
     my $cmd;
     if ($mismatch == 0) {
@@ -136,90 +194,210 @@ sub run_fqgrep {
 
     print $cmd, "\n";
 
+    # trim statistics recording variables
+    my %trimmed_reads;
     my %read_length_histogram;
     my %mismatch_count_histogram;
-    my $match_counter = 0;
+    my ($match_counter, $omit_counter, $trim_counter) = (0, 0, 0);
 
-    my ($trim_file, $trim_fh, $omit_file, $omit_fh, $utrim_file);
-    my %trimmed_reads;
-    unless ($no_trim) {
-#        my $dir = $fastq->dir;
-        my ($file_name, $dir_path, $extension) =
-          File::Basename::fileparse($fastq->basename, qr/\.[^.]*/);
+    # setup output trimming files
+    my ($file_name, $dir_path, $extension) =
+      File::Basename::fileparse($fastq->basename, qr/\.[^.]*/);
 
-        $trim_file = 
-            Path::Class::File->new($file_name . "${extension}.${mismatch}.trim");
-        $omit_file = 
-            Path::Class::File->new($file_name . "${extension}.${mismatch}.omit");
-        $utrim_file = 
-            Path::Class::File->new($file_name . "${extension}.${mismatch}.utrim");
+    my $trim_file =
+        Path::Class::File->new($file_name . "${extension}.${mismatch}.trim");
+    my $omit_file =
+        Path::Class::File->new($file_name . "${extension}.${mismatch}.omit");
+    my $utrim_file =
+        Path::Class::File->new($file_name . "${extension}.${mismatch}.utrim");
 
-        $trim_fh  = $trim_file->openw;
-        $omit_fh  = $omit_file->openw;
-    }
+    my $trim_fh  = $trim_file->openw;
+    my $omit_fh  = $omit_file->openw;
 
-    my $t0 = [gettimeofday];
-
+    # invoke the fqgrep command and read its output line-by-line
     open(my $fh, '-|', $cmd)
       or die "[err] Cannot start fqgrep : $!\n";
 
+    # go through each of the fqgrep outputs and attempt to
+    # append to the trim and/or omit files
+    my $t0 = [gettimeofday]; # start stopwatch
     while (my $line = <$fh>) {
         next if ($match_counter == 0 && $line =~ /^read name/);
         $match_counter++;
         chomp($line);
+
+        # parse out the fqgrep output line for the relevant info
         my @cols = split(/\t/, $line);
+        my $read_name       = $cols[0];
         my $num_mismatches  = $cols[1];
         my $match_start_pos = $cols[5];
+        my $match_end_pos   = $cols[6];
 #        my $match_string    = $cols[7];
+        my $sequence        = $cols[8];
+        my $quality         = $cols[9] ? $cols[9] : '';
         $mismatch_count_histogram{$num_mismatches}++;
-        $read_length_histogram{$match_start_pos}++;
 
-        unless($no_trim) {
-            my $read_name = $cols[0];
-            $trimmed_reads{$read_name} = 1;
-            if ($match_start_pos == 0) {
-                print $omit_fh '@', $read_name, "\n";
-                print $omit_fh $cols[8], "\n";
-                print $omit_fh '+', "\n";
-                print $omit_fh $cols[9], "\n";
-            }
-            else {
-                print $trim_fh '@', $read_name, "\n";
-                print $trim_fh substr($cols[8], 0, $match_start_pos), "\n";
-                print $trim_fh '+', "\n";
-                print $trim_fh substr($cols[9], 0, $match_start_pos), "\n";
-            }
-        }
+        my ($trim_or_omit_flag, $trimmed_read_length) = trim_or_omit_read(
+            trim_type       => $trim_type,
+            read_name       => $read_name,
+            sequence        => $sequence,
+            quality         => $quality,
+            match_start_pos => $match_start_pos,
+            match_end_pos   => $match_end_pos,
+            omit_fh         => $omit_fh,
+            trim_fh         => $trim_fh,
+            format          => $format
+        );
+
+        $read_length_histogram{$trimmed_read_length}++;
+        $trimmed_reads{$read_name} = 1;
+        $omit_counter++ if ($trim_or_omit_flag eq 'omit');
+        $trim_counter++ if ($trim_or_omit_flag eq 'trim');
     }
-
-    my $elapsed = tv_interval ( $t0 );
+    my $elapsed = tv_interval ( $t0 ); # end stopwatch
     print "Elapsed fqgrep processing time: $elapsed secs\n";
+
     close($fh);
 
-    unless ($no_trim) {
-        print 'Dumping out the un-trimmed reads into ', $utrim_file->basename,
-              "\n";
-        $t0 = [gettimeofday];
-        dump_untrimmed_reads(
-            input      => $fastq,
-            output     => $utrim_file,
-            trim_index => \%trimmed_reads
-        );
-        $elapsed = tv_interval($t0);
-        print "Elapsed un-trimmed reads dumping processing time: ",
-              $elapsed, " secs\n";
-          
-        close($trim_fh);
-        close($omit_fh);
-    }
+    # all the remaining reads unaccounted for by fqgrep are keepable
+    # reads.  Place them into the un-trimmed file.
+    print 'Dumping out the un-trimmed reads into ', $utrim_file->basename,
+          "\n";
+    $t0 = [gettimeofday];
+    dump_untrimmed_reads(
+        input      => $fastq,
+        output     => $utrim_file,
+        trim_index => \%trimmed_reads,
+        format     => $format
+    );
+    $elapsed = tv_interval($t0);
+    print "Elapsed un-trimmed reads dumping processing time: ",
+          $elapsed, " secs\n";
+
+    close($trim_fh);
+    close($omit_fh);
 
     my %stats = (
         match_counter            => $match_counter,
+        omit_counter             => $omit_counter,
+        trim_counter             => $trim_counter,
         read_length_histogram    => \%read_length_histogram,
         mismatch_count_histogram => \%mismatch_count_histogram
     );
 
     return \%stats;
+}
+
+sub trim_or_omit_read {
+    my %args = @_;
+
+    if ($args{'type'} =~ /left/i) {
+        return trim_left_adaptor_on_read(%args);
+    }
+    else {
+        return trim_right_adaptor_on_read(%args);
+    }
+}
+
+# perform 'left' side trim (adaptor removal)
+# <adaptor> followed by <read>
+sub trim_left_adaptor_on_read {
+    my %args = @_;
+
+    my ($format,        $read_name, $sequence, $quality,
+        $match_end_pos, $trim_type, $omit_fh,  $trim_fh)
+      = @args{
+        'format',        'read_name', 'sequence', 'quality',
+        'match_end_pos', 'trim_type', 'omit_fh',  'trim_fh',
+      };
+
+    # Found the adaptor at the end of the read. That is bad!
+    my $trimmed_read_length = 0;
+    if ($match_end_pos == (length($sequence) - 1) ) {
+        print_read(
+            fh        => $omit_fh,
+            read_name => $read_name,
+            sequence  => $sequence,
+            quality   => $quality,
+            format    => $format
+        );
+        return ('omit', $trimmed_read_length);
+    }
+
+    # keep only the read sequence after the match end position
+    my $trimmed_read    = substr($sequence, $match_end_pos);
+    my $trimmed_quality = $quality ? substr($quality,  $match_end_pos) : '';
+    $trimmed_read_length = length($trimmed_read);
+
+    print_read(
+        fh        => $trim_fh,
+        read_name => $read_name,
+        sequence  => $trimmed_read,
+        quality   => $trimmed_quality,
+        format    => $format
+    );
+
+    return ('trim', $trimmed_read_length);
+}
+
+# perform 'right' side trim (adaptor removal)
+# <read> followed by <adaptor>
+sub trim_right_adaptor_on_read {
+    my %args = @_;
+
+    my ($format,           $read_name, $sequence, $quality,
+        $match_start_pos,  $trim_type, $omit_fh, $trim_fh)
+      = @args{
+        'format',          'read_name', 'sequence', 'quality',
+        'match_start_pos', 'trim_type', 'omit_fh',  'trim_fh'
+      };
+
+    # Found the adaptor at the beginning of the read. That is bad!
+    my $trimmed_read_length = 0;
+    if ($match_start_pos == 0) {
+        print_read(
+            omit_fh   => $omit_fh,
+            read_name => $read_name,
+            sequence  => $sequence,
+            quality   => $quality,
+            format    => $format
+        );
+        return ('omit', $trimmed_read_length);
+    }
+
+    # keep only the read sequence before the match start position
+    my $trimmed_read = substr($sequence, 0, $match_start_pos);
+    my $trimmed_quality =
+      $quality ? substr($quality, 0, $match_start_pos) : '';
+    $trimmed_read_length = length($trimmed_read);
+
+    print_read(
+        fh        => $trim_fh,
+        read_name => $read_name,
+        sequence  => $trimmed_read,
+        quality   => $trimmed_quality,
+        format    => $format
+    );
+
+    return ('trim', $trimmed_read_length);
+}
+
+sub print_read {
+    my %args = @_;
+
+    my ($read_name, $sequence, $quality, $fh, $format) =
+        @args{'read_name', 'sequence', 'quality', 'fh', 'format'};
+
+    if ($format eq 'FASTQ') {
+        print $fh '@', $read_name, "\n";
+        print $fh $sequence, "\n";
+        print $fh '+', "\n";
+        print $fh $quality, "\n";
+    }
+    else {
+        print $fh '>', $read_name, "\n";
+        print $fh $sequence, "\n";
+    }
 }
 
 sub dump_untrimmed_reads {
@@ -258,17 +436,34 @@ sub dump_stats {
     my $total_read_count = `wc -l $fastq`;
     chomp($total_read_count);
     ($total_read_count) = $total_read_count =~ /(\d+)\s*(\S+)/;
-    $total_read_count = int($total_read_count/4);
+
+    # ascertain if we are working with an input FASTQ or FASTA file
+    my $fh = $fastq->openr;
+    my $header = <$fh>;
+    chomp($header);
+    close($fh);
+    my $file_type = 'FASTA';
+    if ($header = /^@/) {
+        $file_type = 'FASTQ';
+    }
+
+    if ($file_type eq 'FASTQ') {
+        $total_read_count = int($total_read_count/4);
+    }
+    else {
+        $total_read_count = int($total_read_count/2);
+    }
 
     # Dump out overall_filter_count file stats ($fastq.cnt)
-    my $fh = $overall_cnt_file->openw;
-    print $fh join("\t", '#Mismatch', 'cumulative_filtered_read_count', 'filtered_reads', 'total_reads', 'pct'), "\n";
+    $fh = $overall_cnt_file->openw;
+    print $fh join("\t", 'Mismatch', 'cumulative_filtered_read_count', 'filtered_reads', 'omitted_reads', 'total_reads', 'pct'), "\n";
     for my $mismatch (sort { $a <=> $b } @{$mismatches}) {
         my $cumulative_filter_count = $stats->{$mismatch}->{'match_counter'};
+        my $omit_count = $stats->{$mismatch}->{'omit_counter'};
         my $filter_pct =
           $total_read_count
           ? ($cumulative_filter_count / $total_read_count) * 100
-          : 'na';
+          : 'NA';
 
         my $filter_count =
           $stats->{$mismatch}->{'mismatch_count_histogram'}->{$mismatch};
@@ -278,6 +473,7 @@ sub dump_stats {
             $mismatch, 
             $cumulative_filter_count,
             $filter_count,
+            $omit_count,
             $total_read_count, 
             sprintf("%.2f", $filter_pct)), "\n";
     }
@@ -298,14 +494,13 @@ sub dump_stats {
     my $max_length = max_filtered_read_length($stats);
     $fh = $rlh_file->openw;
     for my $m (sort { $a <=> $b } @{$mismatches}) {
-        print $fh "# Mismatch : $m", "\n";
         my $rlh = $stats->{$m}->{'read_length_histogram'};
-        print $fh join("\t", 'Read Length', 'Read Count'), "\n";
+        print $fh join("\t", 'Mismatch', 'Read Length', 'Read Count'), "\n";
         for my $l (0 .. $max_length) {
             my $count = exists $rlh->{$l} ? $rlh->{$l} : 0;
-            print $fh join("\t", $l, $count), "\n";
+            print $fh join("\t", $m, $l, $count), "\n";
         }
-        print $fh "\n\n"; # separate out the data set
+        print $fh "\n";
     }
     close($fh);
 
@@ -328,96 +523,124 @@ sub max_filtered_read_length {
     return $overall_max_read_length;
 }
 
-sub plot {
-}
-
-sub check_architecture {
-    my $arch = POSIX::uname;
-    unless ($arch =~ /64/) {
-        my $host = Sys::Hostname::hostname;
-        die "[err] Sorry pard'ner but you got to be on a ",
-            "64-bit machine to confirm this pse!", "\n",
-            "($host) is a $arch machine!\n";
-    }
-    return 1;
-}
-
 __END__
 
 # D O C U M E N T A T I O N ###################################################
 =head1 NAME
 
-fqgrep-trim.pl - a "trimmer" wrapped around fqgrep
+fqgrep-trim.pl - an adaptive FASTQ/FASTA "trimmer" based upon fqgrep
 
 =head1 SYNOPSIS
 
-fqgrep-trim.pl [OPTIONS] --adaptor [adaptor regex] --fastq [fastq/a file]
+fqgrep-trim.pl [OPTIONS] --adaptor [adaptor regex] --input [fastq file]
 
 =head1 OPTIONS
 
 =over 4
 
-=item B<--fastq=FASTQ>
+=item B<--input=FASTQ|FASTA>
 
-The fastq/a file of interest to process.
+The FASTQ or FASTA file of interest to process B<(required parameter)>.
 
 =item B<--adaptor=ADAPTOR>
 
-The adpator of interest to trim for.
-
-=item B<--no-trim>
-
-Skip producing the actual trimming files and just produce statistics files
-
-=item B<--no-plot>
-
-Skip producing statistics plot file.
+The adpator of interest to trim out B<(required parameter)>.
 
 =item B<--mismatches=MISMATCH-VALUES>
 
-The number of allowable mismatch levels to filter adaptors for.
+The number of allowable mismatches to filter adaptors for (default
+0). This can be multiple integer values separated by a single space.
 
 =item B<--read-length-histogram=FILENAME>
 
-Name of the read length histogram file (default: <fastq-file>.rlh.dat)
+Name of the read length histogram statistics file (default:
+<fastq-file>.rlh.dat)
 
 =item B<--read-mismatch-count-histogram=FILENAME>
 
-Name of the read mismatch count histogram file (default: <fastq-file>.rcmh.dat)
+Name of the read mismatch count histogram statistics file (default:
+<fastq-file>.rcmh.dat)
+
+=item B<--trim="left" or "right">
+
+Performs "left"-end adaptor trimming (e.g. when the desired adaptor
+is found towards the beginning of the read), or "right"-end adaptor
+trimming (e.g. when the desired adaptor is found towards the end
+of the read).  B<(default: "left")>
+
+=item B<--format=FASTQ|FASTA>
+
+The format type to output the omit, trimmed, and untrimmed sequence
+read data. Can be either 'FASTQ' or 'FASTA'. (default: 'FASTQ')
 
 =back
 
 =head1 DESCRIPTION
 
-This script a wrapper around the fqgrep tool to perform "trimming".
+This script a wrapper around the fqgrep tool to perform either
+"left"-end or "right"-end adaptive adaptor trimming, and notes relevant
+statistics.
+
+Upon invocation the script will split the reads from the input file
+into 3 (FASTA or FASTQ formatted) file categories in the current
+working directory. These 3 categories are:
+
+  * an omit file -- <input-filename>.omit
+
+    These represent reads that were improper read, and can be
+    omitted. By improper, the adaptor was found at the opposite end
+    of the read from where it was originally intended.
+
+  * a trimmed file -- <input-filename>.trim
+
+    Reads from the original input-file that had its adaptor identified
+    and excised.
+
+  * an untrimmed file -- <input-filename>.utrim
+
+    Reads from the original input-file that did not have have an identifiable
+    adaptor, and have remained unaltered from the orignal file.
+
+In addition 2 trimming statistic files will be produced in the
+current working directory as well:
+
+  * <input-filename>.read_length_histogram.dat
+
+    Contains a table of the read length counts for a given mismatch level.
+
+  * <input-filename>.read_mismatch_count_histogram.dat
+
+    Contains a table of the number of counts of reads trimmed and omitted
+    for a given mismatch level.
 
 =head1 EXAMPLES
 
 =head1 NOTES
 
+This script performs a simplistic form of read trimming based on
+each individual read in a given FASTQ and/or FASTA file.  It uses
+fqgrep to identify a start or end adaptor for each indivdual read
+in the supplied input file.  It does not make any prior assumptions
+about the input FASTQ/FASTA file and relate the read trimming to
+other reads in the input file.  For example, it does not appropriately
+account and segregate for paired-end FASTQ read sets that are
+produced by Illumina Sequencers.
+
+Feel free to use this script as a starting point for more advanced
+trimming thoughts.
+
 =head1 DEPENDENCIES
 
-    POSIX
+The following perl modules are dependent upon this script:
+
     YAML::Syck
-    Sys::Hostname
     Time::HiRes
     Path::Class
     File::Basename
     Getopt::Long
 
-    gnuplot
-
 =head1 ORIGINAL AUTHOR
 
-Indraniel Das <idas@wustl.edu> 2010-11-06
-
-=head1 BUGS
-
-Please report bugs to LIMS <lims@genome.wustl.edu>
+Indraniel Das <indraniel at gmail dot com> 2010-01-30
 
 =cut
-
-gnuplot> plot "./read-lengths.dat2" index 0:11 using 1:2 w linespoints
-gnuplot> plot "./read-lengths.dat2" index 0:11 using 1:3 w linespoints
-gnuplot> plot "./mismatch-cnt.dat2" index 0 using 1:3 w linespoints
-

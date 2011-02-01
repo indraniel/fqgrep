@@ -1,79 +1,150 @@
 SYNOPSIS
 ========
 
-This is 'grep' designed for FASTQ type files. It performs searches for
-exact sequence string matches as well as some limited approximate string
-searches.
+This is an approximate sequence pattern matcher for FASTQ/FASTA
+files.  One can think of it as being a grep
+(http://en.wikipedia.org/wiki/Grep) and agrep
+(http://en.wikipedia.org/wiki/Agrep) like tool optimized for FASTQ
+and FASTA files. It can work directly on both compressed and
+uncompressed file types.
 
 Below is the help message via ('fqgrep -h') describing its usage:
 
 Usage: fqgrep [options] -p <pattern> <fastq_files>
         -h                  This help message   
         -v                  Program and version information
-        -p                  Pattern of interest to grep [REQUIRED]
+        -p <STRING>         Pattern of interest to grep [REQUIRED]
         -c                  Highlight matching string with color
-        -m                  Number of mismatches to allow for search pattern
-                            [Default: 0]        
+        -f                  Output matches in FASTA format
+        -r                  Output matches in detailed stats report format
+        -b <STRING>         Delimiter string to separate columns
+                            in detailed stats report [Default: '\t']
+        -m <INT>            Total number of mismatches to at most allow for
+                            in search pattern [Default: 0]
+        -s <INT>            Max threshold of substitution mismatches to allow
+                            for in search pattern [Default: unlimited]
+        -i <INT>            Max threshold of insertion mismatches to allow for
+                            in search pattern [Default: unlimited]
+        -d <INT>            Max threshold of deletion mismatches to allow for
+                            in search pattern [Default: unlimited]
+        -S <INT>            Cost of base substitutions in obtaining
+                            approximate match [Default: 1]
+        -I <INT>            Cost of base insertions in obtaining
+                            approximate match [Default: 1]
+        -D <INT>            Cost of base deletions in obtaining
+                            approximate match [Default: 1]
+        -e                  Force tre regexp engine usage
         -C                  Display only a total count of matches
                             (per input FASTQ file)
-        -o <fastq_file>     Desired fastq output file.
+        -o <out_file>       Desired output file.
                             If not specified, defaults to stdout
+
+PREREQUISITES
+=============
+
+"fqgrep" depends upon the following libraries:
+
+  * TRE Regular Expression Library (TRE)
+    [http://laurikari.net/tre/] version 0.8.0.
+  * zlib
+    [http://www.zlib.net]
+
+They will need to be available on your system before fqgrep can be
+installed.
+
+    TRE
+    ===
+
+    On Ubuntu (or any other Debian-based Linux distribution):
+
+        # as the root user:
+        apt-get install libtre-dev libtre5
+
+    On Mac OS X ( via macports [http://www.macports.org/] ):
+
+        sudo port install tre
+
+    For other installation alternatives please visit the following web site:
+
+        http://laurikari.net/tre/download/
+
+    zlib
+    ====
+
+    On Ubuntu (or any other Debian-based Linux distribution):
+
+        # as the root user
+        apt-get install zlib1g zlib1g-dev
 
 INSTALLATION
 ============
 
 The installation process currently consists of a very simple Makefile.
 
-After downloading, and 'cd'ing into the directory just type 'make' at
-the command line.
+Just do the following:
 
-DESCRIPTION
-===========
+git clone git://github.com/indraniel/fqgrep.git;
+cd fqgrep;
+make; # try 'make genome'   if at the Genome Center at Washington University
+      #                     or would like to an executable with all the relevant
+      #                     libraries statically compiled into the executable
+      #
+      # try 'make macports' if installing on Mac OS X and you installed the
+      #                     TRE library via macports (http://www.macports.org/)
 
-This program is really a stitch of the following pieces of separate code
-found on the internet:
+The 'fqgrep' executable should be in the working directory.
+Afterwards, you can move the executable to wherever you wish.
 
-Heng Li's (of maq and bwa fame) FASTQ Parser in C:
-http://lh3lh3.users.sourceforge.net/parsefastq.shtml
+NOTES
+=====
 
-Wikipedia's description of the Boyer-Moore string search algorithm:
-http://en.wikipedia.org/wiki/Boyer%E2%80%93Moore_string_search_algorithm
+When simply searching for exact sequence patterns, or in other
+words, when zero mismatches on a pattern are specified (the default
+case), the Boyer-Moore approach (as used similarly by grep) is
+taken.
 
-Wikipedia's description of the Bitap algorithm:
-http://en.wikipedia.org/wiki/Bitap_algorithm
+If you would like to search for an exact pattern via a regular
+expression, please use the '-e' option.
 
-When zero mismatches on a pattern are specified (the default case)
-the Boyer-Moore approach is taken. Otherwise, the Bitap algorithm
-is used for approximate string matches.
+For approximate pattern matching, the TRE library is being used.
 
-LIMITATIONS
-===========
+The TRE library uses a variant of Bitap algorithm
+(http://en.wikipedia.org/wiki/Bitap_algorithm) for approximate
+string matches.  Below is an excerpt from the TRE README describing
+the notions behind the bitap algorithm:
 
-The current Bitap implementation (a 99% code copy from the Wikipedia
-page) only accounts for string substitutions (not insertions or
-deletions). The current Bitap implementation only accounts for searching
-short patterns (64 bp length limitation). There could be future plans
-to perhaps adjust the Bitap algorithm implementation to handle the
-additional insertion, deletion and longer string pattern cases if this
-program seems interesting.
+   Approximate pattern matching allows matches to be approximate, that
+   is, allows the matches to be close to the searched pattern under
+   some measure of closeness. TRE uses the edit-distance measure (also
+   known as the Levenshtein distance) where characters can be
+   inserted, deleted, or substituted in the searched text in order to
+   get an exact match. Each insertion, deletion, or substitution adds
+   the distance, or cost, of the match. TRE can report the matches
+   which have a cost lower than some given threshold value. TRE can
+   also be used to search for matches with the lowest cost.
 
-Currenly only valid FASTQ files are accepted as inputs. There is not
-much validation of the input files being done. There could be unexpected
-behavior when passing in non-FASTQ files as input arguments. We are
-relying completely on Heng Li's FASTQ parsing logic here!
+These above mentioned insertion, deletion, and substitution cost
+parameters can be adjusted by the -m, -s. -i, -d, -S, -I, -D options
+to fqgrep.  The exact costs for each match can be observed via the
+detailed report (the -r option to fqgrep).
 
-FUTURE IDEAS
-============
+fqgrep does not use an alignment strategy for sequence searching.
 
-* remove usage of linux specific function, strndup [DONE]
-* try using the libbitap (http://www.rational.co.za/libbitap/) or
-  TRE agrep (http://laurikari.net/tre/) libraries for more approximate
-  searching features and optimizations.
-* optimize the Boyer-Moore implementation for DNA sequences
-  (it is currently a 99% copy from the Wikipedia page)
-* implementing an inverse match feature
-* a better stat summary output format
-* appropriately handling & outputing FASTA format files
-* perhaps have a "windowing" feature to only look at sequences for a
-  particular range
-* be able to perform some trimming (or is that for another separate program?)
+AUTHOR
+======
+
+Indraniel Das (indraniel@gmail.com)
+
+ACKNOWLEDGEMENTS
+================
+
+This software was developed at the Genome Center at Washington
+University, St. Louis, MO.
+
+DISCLAIMER
+==========
+
+This software is provided "as is" without warranty of any kind.
+
+
+January 28, 2011

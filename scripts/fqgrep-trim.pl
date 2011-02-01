@@ -595,18 +595,18 @@ Upon invocation, the script will split the reads from the input file
 into 3 (FASTA or FASTQ formatted) file categories in the current working
 directory. These 3 categories are:
 
-  * an omit file -- <input-filename>.omit
+  * an omit file -- <input-filename>.<mismatch level>.omit
 
     These represent reads that were improper, and can be omitted. By
     improper, the adaptor was found at the opposite end of the read from
     where it was originally intended.
 
-  * a trimmed file -- <input-filename>.trim
+  * a trimmed file -- <input-filename>.<mismatch level>.trim
 
     Reads from the original input-file that had its adaptor identified
     and excised.
 
-  * an untrimmed file -- <input-filename>.utrim
+  * an untrimmed file -- <input-filename>.<mismatch level>.utrim
 
     Reads from the original input-file that did not have have an
     identifiable adaptor, and have remained unaltered from the orignal

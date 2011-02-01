@@ -26,6 +26,7 @@ use strict;
 use Time::HiRes qw(gettimeofday tv_interval);
 use Path::Class;
 use File::Basename;
+use Pod::Usage;
 use Getopt::Long;
 
 # M A I N #####################################################################
@@ -33,7 +34,7 @@ use Getopt::Long;
 $| = 1; # enable AUTOFLUSH mode
 
 # Setup Default options
-my ($opt_fastq, @opt_mismatches, $opt_adaptor);
+my ($opt_fastq, @opt_mismatches, $opt_adaptor, $opt_help);
 my $opt_read_length_histogram;
 my $opt_read_count_histogram;
 my $fqgrep = qx(which fqgrep) || undef; # assuming fqgrep is somewhere in $PATH
@@ -48,8 +49,13 @@ my $result = GetOptions(
     "read-length-histogram"          => \$opt_read_length_histogram,
     "read-count-histogram"           => \$opt_read_count_histogram,
     "fqgrep=s"                       => \$fqgrep,
-    "trim"                           => \$opt_trim
+    "trim"                           => \$opt_trim,
+    "help"                           => \$opt_help
 );
+
+if ($opt_help) {
+    pod2usage(-exitval => 0, -verbose => 0);
+}
 
 # ensure that fqgrep is found and runnable
 unless ($fqgrep) {
@@ -533,6 +539,18 @@ fqgrep-trim.pl - an adaptive FASTQ/FASTA "trimmer" based upon fqgrep
 =head1 SYNOPSIS
 
 fqgrep-trim.pl [OPTIONS] --adaptor [adaptor regex] --input [fastq file]
+
+  Options:
+    --help                  brief help message
+    --input                 input FASTQ or FASTA file
+    --adaptor               the adaptor pattern to match for
+                            (can be a regular expression)
+    --mismatches            adaptor pattern mismatch level threshold
+    --read-length-histogram filename for the read length histogram stats
+    --read-count-histogram  filename for the read count histogram stats
+    --trim                  adaptor trimming direction "left" or "right"
+    --format                format of the untrimmed, trimmed, and omit files
+                            ("FASTQ" or "FASTA").
 
 =head1 OPTIONS
 

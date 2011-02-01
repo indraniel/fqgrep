@@ -571,14 +571,14 @@ Name of the read length histogram statistics file (default:
 Name of the read mismatch count histogram statistics file (default:
 <fastq-file>.rcmh.dat)
 
-=item B<--trim="left" or "right">
+=item B<--trim='left' or 'right'>
 
 Performs "left"-end adaptor trimming (e.g. when the desired adaptor
 is found towards the beginning of the read), or "right"-end adaptor
 trimming (e.g. when the desired adaptor is found towards the end
 of the read).  B<(default: "left")>
 
-=item B<--format=FASTQ|FASTA>
+=item B<--format='FASTQ' or 'FASTA'>
 
 The format type to output the omit, trimmed, and untrimmed sequence
 read data. Can be either 'FASTQ' or 'FASTA'. (default: 'FASTQ')

@@ -106,12 +106,12 @@ unless ($opt_format =~ /^FAST(A|Q)$/) {
 
 # ensure output stat dump file names
 unless ($opt_read_length_histogram) {
-    $opt_read_length_histogram = $fastq->basename . '.read_length_histogram.dat';
+    $opt_read_length_histogram = $fastq->basename . '.rlh.dat';
 }
 
 unless ($opt_read_count_histogram) {
     $opt_read_count_histogram =
-      $fastq->basename . '.read_count_histogram.dat';
+      $fastq->basename . '.rch.dat';
 }
 
 print "Processing original fastq file: $fastq \n";
@@ -569,7 +569,7 @@ Name of the read length histogram statistics file (default:
 =item B<--read-count-histogram=FILENAME>
 
 Name of the read mismatch count histogram statistics file (default:
-<fastq-file>.rcmh.dat)
+<fastq-file>.rch.dat)
 
 =item B<--trim='left' or 'right'>
 

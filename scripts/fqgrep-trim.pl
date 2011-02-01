@@ -620,13 +620,13 @@ current working directory as well:
 This script performs a simplistic form of read trimming based on each
 individual read in a given FASTQ and/or FASTA file. It uses fqgrep to
 identify a start or end adaptor for each indivdual read in the supplied
-input file, and subsequently excises the adaptor from the read. It does
-not make any prior assumptions about the input FASTQ/FASTA file and
-relate consequence of a particular read trimming to other reads in the
-input file. For example, when trimming a read from a FASTQ that contains
-Illumina Paired-End sequence reads, the script does not account for and
-appropriately segregate the the opposite read 'mate-pair' that may also
-be affected by the trim.
+input file, and subsequently excises the adaptor from the read. It
+does not make any prior assumptions about the input FASTQ/FASTA file
+and relate the consequence of a particular read trimming to other reads
+in the input file. For example, when trimming a read from a FASTQ that
+contains Illumina Paired-End sequence reads, the script does not account
+for and appropriately segregate the the opposite read 'mate-pair' that
+may also be affected by the trim.
 
 Feel free to use this script as a starting point for more advanced
 trimming thoughts.

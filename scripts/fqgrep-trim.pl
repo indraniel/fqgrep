@@ -54,7 +54,11 @@ my $result = GetOptions(
 );
 
 if ($opt_help) {
-    pod2usage(-exitval => 0, -verbose => 0);
+    pod2usage(
+        -exitval => 0,
+        -verbose => 1,
+        -message => "Please do a 'perldoc $0' for the full documentation."
+    );
 }
 
 # ensure that fqgrep is found and runnable
@@ -539,18 +543,6 @@ fqgrep-trim.pl - an adaptive FASTQ/FASTA "trimmer" based upon fqgrep
 =head1 SYNOPSIS
 
 fqgrep-trim.pl [OPTIONS] --adaptor [adaptor regex] --input [fastq file]
-
-  Options:
-    --help                  brief help message
-    --input                 input FASTQ or FASTA file
-    --adaptor               the adaptor pattern to match for
-                            (can be a regular expression)
-    --mismatches            adaptor pattern mismatch level threshold
-    --read-length-histogram filename for the read length histogram stats
-    --read-count-histogram  filename for the read count histogram stats
-    --trim                  adaptor trimming direction "left" or "right"
-    --format                format of the untrimmed, trimmed, and omit files
-                            ("FASTQ" or "FASTA").
 
 =head1 OPTIONS
 

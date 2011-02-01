@@ -608,20 +608,22 @@ directory. These 3 categories are:
 
   * an untrimmed file -- <input-filename>.utrim
 
-    Reads from the original input-file that did not have have an identifiable
-    adaptor, and have remained unaltered from the orignal file.
+    Reads from the original input-file that did not have have an
+    identifiable adaptor, and have remained unaltered from the orignal
+    file.
 
-In addition 2 trimming statistic files will be produced in the
+In addition 2 trimming statistics files will be produced in the
 current working directory as well:
 
   * <input-filename>.read_length_histogram.dat
 
-    Contains a table of the read length counts for a given mismatch level.
+    Contains a table of the read length counts for a given mismatch
+    level.
 
   * <input-filename>.read_count_histogram.dat
 
-    Contains a table of the number of counts of reads trimmed and omitted
-    for a given mismatch level.
+    Contains a table of the number of counts of reads trimmed and
+    omitted for a given mismatch level.
 
 =head1 EXAMPLES
 

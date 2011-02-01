@@ -581,15 +581,15 @@ This script a wrapper around the fqgrep tool to perform either
 "left"-end or "right"-end adaptive adaptor trimming, and notes relevant
 statistics.
 
-Upon invocation the script will split the reads from the input file
-into 3 (FASTA or FASTQ formatted) file categories in the current
-working directory. These 3 categories are:
+Upon invocation, the script will split the reads from the input file
+into 3 (FASTA or FASTQ formatted) file categories in the current working
+directory. These 3 categories are:
 
   * an omit file -- <input-filename>.omit
 
-    These represent reads that were improper read, and can be
-    omitted. By improper, the adaptor was found at the opposite end
-    of the read from where it was originally intended.
+    These represent reads that were improper, and can be omitted. By
+    improper, the adaptor was found at the opposite end of the read from
+    where it was originally intended.
 
   * a trimmed file -- <input-filename>.trim
 
@@ -617,14 +617,16 @@ current working directory as well:
 
 =head1 NOTES
 
-This script performs a simplistic form of read trimming based on
-each individual read in a given FASTQ and/or FASTA file.  It uses
-fqgrep to identify a start or end adaptor for each indivdual read
-in the supplied input file.  It does not make any prior assumptions
-about the input FASTQ/FASTA file and relate the read trimming to
-other reads in the input file.  For example, it does not appropriately
-account and segregate for paired-end FASTQ read sets that are
-produced by Illumina Sequencers.
+This script performs a simplistic form of read trimming based on each
+individual read in a given FASTQ and/or FASTA file. It uses fqgrep to
+identify a start or end adaptor for each indivdual read in the supplied
+input file, and subsequently excises the adaptor from the read. It does
+not make any prior assumptions about the input FASTQ/FASTA file and
+relate consequence of a particular read trimming to other reads in the
+input file. For example, when trimming a read from a FASTQ that contains
+Illumina Paired-End sequence reads, the script does not account for and
+appropriately segregate the the opposite read 'mate-pair' that may also
+be affected by the trim.
 
 Feel free to use this script as a starting point for more advanced
 trimming thoughts.

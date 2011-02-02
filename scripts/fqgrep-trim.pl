@@ -605,30 +605,33 @@ The adpator of interest to trim out B<(required parameter)>.
 
 =item B<--mismatches=MISMATCH-VALUES>
 
-The number of allowable mismatches to filter adaptors for (default
-0). This can be multiple integer values separated by a single space.
+The number of allowable mismatches to filter adaptors for.
+This can be multiple integer values separated by a single space.
+B<(default: 0)>
 
 =item B<--read-length-histogram=FILENAME>
 
-Name of the read length histogram statistics file (default:
-<fastq-file>.rlh.dat)
+Name of the read length histogram statistics file
+B<(default: {$input}.rlh.dat)>
 
 =item B<--read-count-histogram=FILENAME>
 
-Name of the read mismatch count histogram statistics file (default:
-<fastq-file>.rch.dat)
+Name of the read mismatch count histogram statistics file.
+B<(default: {$input}.rch.dat)>
 
 =item B<--trim='left' or 'right'>
 
 Performs "left"-end adaptor trimming (e.g. when the desired adaptor
 is found towards the beginning of the read), or "right"-end adaptor
 trimming (e.g. when the desired adaptor is found towards the end
-of the read).  B<(default: "left")>
+of the read).
+B<(default: "left")>
 
 =item B<--format='FASTQ' or 'FASTA'>
 
 The format type to output the omit, trimmed, and untrimmed sequence
-read data. Can be either 'FASTQ' or 'FASTA'. (default: 'FASTQ')
+read data. Can be either 'FASTQ' or 'FASTA'.
+B<(default: 'FASTQ')>
 
 =item B<--fqgrep=/path/to/fqgrep>
 
@@ -678,6 +681,23 @@ current working directory as well:
     filtered by fgrep, trimmed and omitted for a given mismatch level.
 
 =head1 EXAMPLES
+
+To trim a FASTQ file of reads containing an adaptor 'GATTACA' at the beginning
+(right-side) of the reads and experimenting with allowing for 0, 1, & 2
+mismatch thresholds in the adaptor string:
+
+  fqgrep-trim.pl --trim="right" --adaptor='GATTACA' --input="/path/to/fastq" --mismatches 0 1 2
+
+To trim a FASTA file of reads from a transcriptome experiment containing
+polyA tails (at least 5 As and more) and potentially one or more 'N'
+bases at the end (left-side) of the read, and only allowing for exact
+matches:
+
+  fqgrep-trim.pl --trim="left" --adaptor="A{5,}(N+)?" --input="/path/to/fasta" --format="FASTA"
+
+The above command will output the trimmed, omitted, and untrimmed reads
+into FASTA formatted file based upon the C<--format="FASTA"> option
+usage.
 
 =head1 NOTES
 

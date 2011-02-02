@@ -22,7 +22,6 @@ use warnings;
 use strict;
 
 # M O D U L E S ###############################################################
-#use YAML::Syck;
 use Time::HiRes qw(gettimeofday tv_interval);
 use Path::Class;
 use File::Basename;
@@ -43,14 +42,15 @@ my $opt_format = 'FASTQ';
 
 # parse options
 my $result = GetOptions(
+    "help"                           => \$opt_help,
     "input=s"                        => \$opt_fastq,
-    "mismatches=i{,}"                => \@opt_mismatches,
     "adaptor=s"                      => \$opt_adaptor,
-    "read-length-histogram"          => \$opt_read_length_histogram,
-    "read-count-histogram"           => \$opt_read_count_histogram,
-    "fqgrep=s"                       => \$fqgrep,
+    "mismatches=i{,}"                => \@opt_mismatches,
+    "read-length-histogram=s"        => \$opt_read_length_histogram,
+    "read-count-histogram=s"         => \$opt_read_count_histogram,
     "trim=s"                         => \$opt_trim,
-    "help"                           => \$opt_help
+    "format=s"                       => \$opt_format,
+    "fqgrep=s"                       => \$fqgrep
 );
 
 if ($opt_help) {
@@ -539,6 +539,10 @@ fqgrep-trim.pl [OPTIONS] --adaptor [adaptor regex] --input [fastq file]
 
 =over 4
 
+=item B<--help>
+
+Help message to fqgrep-trim.pl.  A repeat of a subset of this documentation.
+
 =item B<--input=FASTQ|FASTA>
 
 The FASTQ or FASTA file of interest to process B<(required parameter)>.
@@ -573,6 +577,11 @@ of the read).  B<(default: "left")>
 
 The format type to output the omit, trimmed, and untrimmed sequence
 read data. Can be either 'FASTQ' or 'FASTA'. (default: 'FASTQ')
+
+=item B<--fqgrep=/path/to/fqgrep>
+
+Use if the the fqgrep executable is not already in one of your $PATH
+directory locations.
 
 =back
 
@@ -638,10 +647,10 @@ trimming thoughts.
 
 The following perl modules are dependent upon this script:
 
-    YAML::Syck
     Time::HiRes
     Path::Class
     File::Basename
+    Pod::Usage
     Getopt::Long
 
 =head1 ORIGINAL AUTHOR

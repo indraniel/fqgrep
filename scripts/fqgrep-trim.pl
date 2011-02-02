@@ -405,7 +405,22 @@ sub print_read {
 
 sub dump_untrimmed_reads {
     my %args = @_;
-    my ($input, $output, $trim_index) = @args{'input', 'output', 'trim_index'};
+    my ($input, $output, $trim_index, $format) =
+      @args{'input', 'output', 'trim_index', 'format'};
+
+    my $input_file_type = input_file_type($input);
+
+    if ($input_file_type eq 'FASTQ') {
+        return dump_untrimmed_from_input_fastq(%args);
+    }
+
+    return dump_untrimmed_from_input_fasta(%args);
+}
+
+sub dump_untrimmed_from_input_fastq {
+    my %args = @_;
+    my ($input, $output, $trim_index, $format) =
+      @args{'input', 'output', 'trim_index', 'format'};
 
     my $ifh = $input->openr;
     my $ofh = $output->openw;
@@ -418,13 +433,50 @@ sub dump_untrimmed_reads {
 
         next if exists $trim_index->{$read_name};
 
-        print $ofh $name;
-        print $ofh $sequence;
-        print $ofh $comment;
-        print $ofh $quality;
+        if ($format eq 'FASTQ') {
+            print $ofh $name;
+            print $ofh $sequence;
+            print $ofh $comment;
+            print $ofh $quality;
+        }
+        else {
+            print $ofh '>', $read_name, "\n";
+            print $ofh $sequence;
+        }
+    }
+
+    close($ofh);
+    close($ifh);
+}
+
+sub dump_untrimmed_from_input_fasta {
+    my %args = @_;
+    my ($input, $output, $trim_index, $format) =
+      @args{'input', 'output', 'trim_index', 'format'};
+
+    my $ifh = $input->openr;
+    my $ofh = $output->openw;
+
+    while (my $name = <$ifh>) {
+        my ($read_name) = $name =~ /^>\s*(\S+)/;
+        my $sequence = <$ifh>;
+
+        next if exists $trim_index->{$read_name};
+
+        if ($format eq 'FASTQ') {
+            print $ofh '@', $read_name, "\n";
+            print $ofh $sequence;
+            print $ofh '+', "\n";
+            print $ofh '', "\n";
+        }
+        else {
+            print $ofh $name;
+            print $ofh $sequence;
+        }
     }
     
     close($ofh);
+    close($ifh);
 }
 
 sub dump_stats {

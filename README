@@ -106,7 +106,9 @@ taken.
 If you would like to search for an exact pattern via a regular
 expression, please use the '-e' option.
 
-For approximate pattern matching, the TRE library is being used.
+fqgrep does not use an alignment strategy for approximate sequence
+searching. For approximate pattern matching, the TRE library is being
+used.
 
 The TRE library uses a variant of Bitap algorithm
 (http://en.wikipedia.org/wiki/Bitap_algorithm) for approximate
@@ -128,7 +130,11 @@ parameters can be adjusted by the -m, -s. -i, -d, -S, -I, -D options
 to fqgrep.  The exact costs for each match can be observed via the
 detailed report (the -r option to fqgrep).
 
-fqgrep does not use an alignment strategy for sequence searching.
+The TRE regular expression library is the default regular expression
+engine used in R -- The R Project for Statistical Computing
+(http://www.r-project.org); due to this, the results of fqgrep maybe
+similar to the results produced by software from the Bioconductor
+Project (http://www.bioconductor.org).
 
 fqgrep-trim.pl
 --------------

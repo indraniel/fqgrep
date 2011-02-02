@@ -294,7 +294,7 @@ sub run_fqgrep_and_trim_reads {
 sub trim_or_omit_read {
     my %args = @_;
 
-    if ($args{'type'} =~ /left/i) {
+    if ($args{'trim_type'} =~ /left/i) {
         return trim_left_adaptor_on_read(%args);
     }
     else {
@@ -359,7 +359,7 @@ sub trim_right_adaptor_on_read {
     my $trimmed_read_length = 0;
     if ($match_start_pos == 0) {
         print_read(
-            omit_fh   => $omit_fh,
+            fh        => $omit_fh,
             read_name => $read_name,
             sequence  => $sequence,
             quality   => $quality,

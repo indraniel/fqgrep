@@ -655,6 +655,6 @@ The following perl modules are dependent upon this script:
 
 =head1 ORIGINAL AUTHOR
 
-Indraniel Das <indraniel at gmail dot com> 2010-01-30
+Indraniel Das <indraniel at gmail dot com>
 
 =cut

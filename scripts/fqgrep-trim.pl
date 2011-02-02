@@ -207,7 +207,6 @@ sub run_fqgrep_and_trim_reads {
     # trim statistics recording variables
     my %trimmed_reads;
     my %read_length_histogram;
-    my %mismatch_count_histogram;
     my ($match_counter, $omit_counter, $trim_counter) = (0, 0, 0);
 
     # setup output trimming files
@@ -245,7 +244,6 @@ sub run_fqgrep_and_trim_reads {
 #        my $match_string    = $cols[7];
         my $sequence        = $cols[8];
         my $quality         = $cols[9] ? $cols[9] : '';
-        $mismatch_count_histogram{$num_mismatches}++;
 
         my ($trim_or_omit_flag, $trimmed_read_length) = trim_or_omit_read(
             trim_type       => $trim_type,
@@ -292,7 +290,6 @@ sub run_fqgrep_and_trim_reads {
         omit_counter             => $omit_counter,
         trim_counter             => $trim_counter,
         read_length_histogram    => \%read_length_histogram,
-        mismatch_count_histogram => \%mismatch_count_histogram
     );
 
     return \%stats;
@@ -470,22 +467,13 @@ sub dump_stats {
     for my $mismatch (sort { $a <=> $b } @{$mismatches}) {
         my $cumulative_filter_count = $stats->{$mismatch}->{'match_counter'};
         my $omit_count = $stats->{$mismatch}->{'omit_counter'};
-        my $filter_pct =
-          $total_read_count
-          ? ($cumulative_filter_count / $total_read_count) * 100
-          : 'NA';
-
-        my $filter_count =
-          $stats->{$mismatch}->{'mismatch_count_histogram'}->{$mismatch};
-        $filter_count = 0 unless $filter_count;
 
         print $fh join("\t",
             $mismatch, 
-            $cumulative_filter_count,
-            $filter_count,
+            $total_filter_count,
+            $trim_count,
             $omit_count,
-            $total_read_count, 
-            sprintf("%.2f", $filter_pct)), "\n";
+            $total_read_count), "\n";
     }
     close($fh);
 

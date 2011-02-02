@@ -439,17 +439,9 @@ sub dump_stats {
     chomp($total_read_count);
     ($total_read_count) = $total_read_count =~ /(\d+)\s*(\S+)/;
 
-    # ascertain if we are working with an input FASTQ or FASTA file
-    my $fh = $fastq->openr;
-    my $header = <$fh>;
-    chomp($header);
-    close($fh);
-    my $file_type = 'FASTA';
-    if ($header = /^@/) {
-        $file_type = 'FASTQ';
-    }
-
-    if ($file_type eq 'FASTQ') {
+    # ascertain total reads in file based upon input file type
+    my $type = input_file_type($fastq);
+    if ($type eq 'FASTQ') {
         $total_read_count = int($total_read_count/4);
     }
     else {
@@ -498,6 +490,22 @@ sub dump_stats {
     close($fh);
 
     return 1;
+}
+
+sub input_file_type {
+    my $input_file = shift;
+
+    my $fh = $input_file->openr;
+    my $header = <$fh>;
+    chomp($header);
+    close($fh);
+
+    my $file_type = 'FASTA';
+    if ($header =~ /^@/) {
+        $file_type = 'FASTQ';
+    }
+
+    return $file_type;
 }
 
 sub max_filtered_read_length {

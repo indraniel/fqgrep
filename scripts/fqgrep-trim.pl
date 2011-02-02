@@ -126,18 +126,14 @@ my $stats = trim_file(
 );
 
 # setup the files that the collected statistics will be filled into
-my $rl_hist_file = Path::Class::File->new($opt_read_length_histogram);
-my $rmc_hist_file =
-  Path::Class::File->new($opt_read_count_histogram);
-my $overall_filter_count_file =
-  Path::Class::File->new($fastq->basename . '.cnt');
+my $rlh_file = Path::Class::File->new($opt_read_length_histogram);
+my $rch_file = Path::Class::File->new($opt_read_count_histogram);
 
 dump_stats(
     stats                         => $stats,
     mismatches                    => \@opt_mismatches,
-    read_length_histogram         => $rl_hist_file,
-#    read_count_histogram          => $rmc_hist_file,
-    overall_filter_count          => $overall_filter_count_file,
+    read_length_histogram_file    => $rlh_file,
+    read_count_histogram_file     => $rch_file,
     fastq                         => $fastq
 );
 
@@ -433,11 +429,10 @@ sub dump_untrimmed_reads {
 
 sub dump_stats {
     my %args = @_;
-    my ($stats, $mismatches, $rlh_file, $rmch_file, $overall_cnt_file, $fastq)
-      = @args{
-        'stats',                 'mismatches',
-        'read_length_histogram', 'read_count_histogram',
-        'overall_filter_count',  'fastq'
+    my ($stats, $mismatches, $rlh_file, $rch_file, $fastq) = @args{
+        'stats',                      'mismatches',
+        'read_length_histogram_file', 'read_count_histogram_file',
+        'fastq'
       };
 
     my $total_read_count = `wc -l $fastq`;
@@ -461,11 +456,12 @@ sub dump_stats {
         $total_read_count = int($total_read_count/2);
     }
 
-    # Dump out overall_filter_count file stats ($fastq.cnt)
-    $fh = $overall_cnt_file->openw;
-    print $fh join("\t", 'Mismatch', 'cumulative_filtered_read_count', 'filtered_reads', 'omitted_reads', 'total_reads', 'pct'), "\n";
+    # Dump out read count histogram file stats
+    my $fh = $rch_file->openw;
+    print $fh join("\t", 'MismatchThreshold', 'TotalFilteredReads', 'Trimmed', 'Omitted', 'TotalReads'), "\n";
     for my $mismatch (sort { $a <=> $b } @{$mismatches}) {
-        my $cumulative_filter_count = $stats->{$mismatch}->{'match_counter'};
+        my $total_filter_count = $stats->{$mismatch}->{'match_counter'};
+        my $trim_count = $stats->{$mismatch}->{'trim_counter'};
         my $omit_count = $stats->{$mismatch}->{'omit_counter'};
 
         print $fh join("\t",
@@ -481,7 +477,7 @@ sub dump_stats {
 #    my $max_mismatch = (sort { $b <=> $a } @{$mismatches})[0];
 #    my $rmc_hist = $stats->{$max_mismatch}->{'mismatch_count_histogram'};
 #    $fh = $rmch_file->openw;
-#    print $fh join("\t", '#Mismatch', 'filtered read count'), "\n";
+#    print $fh join("\t", 'MismatchThreshold', 'MismatchLevel', 'FilteredReads'), "\n";
 #    for my $m (0 .. $max_mismatch) {
 #        my $count = exists $rmc_hist->{$m} ? $rmc_hist->{$m} : 0;
 #        print $fh join("\t", $m, $count), "\n";
@@ -491,14 +487,13 @@ sub dump_stats {
     # Dump out read length count histogram file stats ($fastq.rlh.dat)
     my $max_length = max_filtered_read_length($stats);
     $fh = $rlh_file->openw;
+    print $fh join("\t", 'Mismatch', 'ReadLength', 'ReadCount'), "\n";
     for my $m (sort { $a <=> $b } @{$mismatches}) {
         my $rlh = $stats->{$m}->{'read_length_histogram'};
-        print $fh join("\t", 'Mismatch', 'Read Length', 'Read Count'), "\n";
         for my $l (0 .. $max_length) {
             my $count = exists $rlh->{$l} ? $rlh->{$l} : 0;
             print $fh join("\t", $m, $l, $count), "\n";
         }
-        print $fh "\n";
     }
     close($fh);
 
@@ -603,15 +598,15 @@ directory. These 3 categories are:
 In addition 2 trimming statistics files will be produced in the
 current working directory as well:
 
-  * <input-filename>.read_length_histogram.dat
+  * <input-filename>.rlh.dat
 
-    Contains a table of the read length counts for a given mismatch
-    level.
+    Contains a read length counts histogram table (rlh) for a
+    given mismatch level.
 
-  * <input-filename>.read_count_histogram.dat
+  * <input-filename>.rch.dat
 
-    Contains a table of the number of counts of reads trimmed and
-    omitted for a given mismatch level.
+    Contains a reads count histogram table (rch) for the number of reads
+    filtered by fgrep, trimmed and omitted for a given mismatch level.
 
 =head1 EXAMPLES
 

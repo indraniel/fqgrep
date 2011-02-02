@@ -130,6 +130,28 @@ detailed report (the -r option to fqgrep).
 
 fqgrep does not use an alignment strategy for sequence searching.
 
+fqgrep-trim.pl
+--------------
+
+Based upon fqgrep, one could build sequence demultiplexers and trimmers.
+For the case of adaptor trimming, an example is provided in the
+"scripts" subdirectory of the git repository.
+
+The example trimmer, written in PERL, is called 'fqgrep-trim.pl'. It
+can perform a "left" or "right"-based adaptor trimming based upon an
+input FASTQ or FASTA file, and an adaptor pattern (which can be a
+regular expression). Please try a "perldoc scripts/fqgrep-trim.pl" to
+see its full documentation.
+
+To get fqgrep-trim.pl to work you may need to install the "Path::Class"
+module (found on CPAN) onto your system.
+
+As the root user, please try the following terminal command for
+"Path::Class" installation:
+
+     cpan Path::Class
+
+
 AUTHOR
 ======
 

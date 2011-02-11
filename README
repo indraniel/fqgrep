@@ -57,8 +57,7 @@ installed.
 
     On Ubuntu (or any other Debian-based Linux distribution):
 
-        # as the root user:
-        apt-get install libtre-dev libtre5
+        sudo apt-get install libtre-dev libtre5
 
     On Mac OS X ( via macports [http://www.macports.org/] ):
 
@@ -73,8 +72,17 @@ installed.
 
     On Ubuntu (or any other Debian-based Linux distribution):
 
-        # as the root user
-        apt-get install zlib1g zlib1g-dev
+        sudo apt-get install zlib1g zlib1g-dev
+
+Usage of the example trimmer, fqgrep-trim.pl, provided in the scripts
+subdirectory of this git repository, may require the installation of the
+'Path::Class' perl module (found on CPAN) onto your system.
+
+As the root user, please try the following terminal command for
+"Path::Class" installation:
+
+     cpan Path::Class
+
 
 INSTALLATION
 ============
@@ -86,8 +94,8 @@ Just do the following:
 git clone git://github.com/indraniel/fqgrep.git;
 cd fqgrep;
 make; # try 'make genome'   if at the Genome Center at Washington University
-      #                     or would like to an executable with all the relevant
-      #                     libraries statically compiled into the executable
+      #                     or would like to create an executable with all the
+      #                     relevant libraries statically compiled into it
       #
       # try 'make macports' if installing on Mac OS X and you installed the
       #                     TRE library via macports (http://www.macports.org/)
@@ -136,12 +144,14 @@ engine used in R -- The R Project for Statistical Computing
 similar to the results produced by software from the Bioconductor
 Project (http://www.bioconductor.org).
 
+Only POSIX styled regular expression can be used with fqgrep.
+
 fqgrep-trim.pl
 --------------
 
 Based upon fqgrep, one could build sequence demultiplexers and trimmers.
-For the case of adaptor trimming, an example is provided in the
-"scripts" subdirectory of the git repository.
+For the case of adaptor trimming, a rudimentary example is provided in
+the "scripts" subdirectory of the git repository.
 
 The example trimmer, written in PERL, is called 'fqgrep-trim.pl'. It
 can perform a "left" or "right"-based adaptor trimming based upon an
@@ -150,13 +160,6 @@ regular expression). Please try a "perldoc scripts/fqgrep-trim.pl" to
 see its full documentation.
 
 To get fqgrep-trim.pl to work you may need to install the "Path::Class"
-module (found on CPAN) onto your system.
-
-As the root user, please try the following terminal command for
-"Path::Class" installation:
-
-     cpan Path::Class
-
 
 AUTHOR
 ======

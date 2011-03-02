@@ -346,11 +346,24 @@ search_input_fastq_file(FILE *out_fp,
     read_match match_info;
 
     // open the file handler
-    if ( (fp = gzopen(input_fastq, "r")) == NULL ) {
+    if ( strcmp(input_fastq, "-") == 0 ) {
+        fp = gzdopen(fileno(stdin), "r");
+    }
+    else {
+        fp = gzopen(input_fastq, "r");
+    }
+
+    if ( (fp == NULL) && (strcmp(input_fastq, "-") != 0) ) {
         fprintf(stderr, "%s : [err] Could not open FASTQ '%s' for reading.\n",
                         PRG_NAME, input_fastq);
         exit(1);
-    } 
+    }
+
+    if ( (fp == NULL) && (strcmp(input_fastq, "-") == 0) ) {
+        fprintf(stderr, "%s : [err] Could not open stdin for reading.\n",
+                        PRG_NAME);
+        exit(1);
+    }
 
     // initialize seq
     seq = kseq_init(fp);

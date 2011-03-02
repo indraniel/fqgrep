@@ -41,6 +41,7 @@ typedef struct {
     int count;
     int color;
     int force_tre;
+    int invert_match;
     int report_fastq;
     int report_fasta;
     int report_stats;
@@ -127,6 +128,7 @@ int main(int argc, char *argv[]) {
         0,            // count flag
         0,            // color flag
         0,            // force tre engine flag
+        0,            // invert match flag
         1,            // output fastq report
         0,            // output fasta report
         0,            // output stats report
@@ -204,6 +206,7 @@ help_message() {
     fprintf(stdout, "\t%-20s%-20s\n", "-h", "This help message");
     fprintf(stdout, "\t%-20s%-20s\n", "-v", "Program and version information");
     fprintf(stdout, "\t%-20s%-20s\n", "-p <STRING>", "Pattern of interest to grep [REQUIRED]");
+    fprintf(stdout, "\t%-20s%-20s\n", "-l", "Invert match - show only sequences that DO NOT match the pattern");
     fprintf(stdout, "\t%-20s%-20s\n", "-c", "Highlight matching string with color");
     fprintf(stdout, "\t%-20s%-20s\n", "-f", "Output matches in FASTA format");
     fprintf(stdout, "\t%-20s%-20s\n", "-r", "Output matches in detailed stats report format");
@@ -246,7 +249,7 @@ process_options(int argc, char *argv[], options *opts) {
     char *opt_p_value = NULL;
     char *opt_b_value = NULL;
 
-    while( (c = getopt(argc, argv, "hvecfrm:i:s:d:o:p:b:CD:I:S:")) != -1 ) {
+    while( (c = getopt(argc, argv, "hvecfrlm:i:s:d:o:p:b:CD:I:S:")) != -1 ) {
         switch(c) {
             case 'h':
                 help_message();
@@ -258,6 +261,9 @@ process_options(int argc, char *argv[], options *opts) {
                 break;
             case 'e':
                 opts->force_tre = 1;
+                break;
+            case 'l':
+                opts->invert_match = 1;
                 break;
             case 'o':
                 opt_o_value = optarg;
@@ -412,7 +418,13 @@ search_input_fastq_file(FILE *out_fp,
             approximate_regexp_search( &opts, &match_info );
         }
 
-        if (match_info.substr_start != NULL) {
+        if ( match_info.substr_start != NULL && opts.invert_match == 0 ) {
+            match_counter++;
+            if (opts.count == 0)
+                report_read( out_fp, &opts, seq, &match_info );
+        }
+
+        else if ( match_info.substr_start == NULL && opts.invert_match == 1 ) {
             match_counter++;
             if (opts.count == 0)
                 report_read( out_fp, &opts, seq, &match_info );
@@ -475,7 +487,7 @@ display_sequence(FILE *out_fp,
             free(highlight);
             free(remainder);
         }
-        else {
+        else if (substr_start != NULL) {
             start  = 0;
             length = substr_start - sequence;
             char *begin = substring( sequence, start, length );
@@ -492,6 +504,9 @@ display_sequence(FILE *out_fp,
             free(begin);
             free(highlight);
             free(end);
+        }
+        else {
+            fprintf(out_fp, "%s", sequence);
         }
     }
     else {
@@ -575,9 +590,16 @@ report_stats(FILE *out_fp,
     start  = (size_t) info->start_pos;
     length = (size_t) (info->end_pos - info->start_pos);
 
-    match = substring( seq->seq.s, start, length );
-    fprintf(out_fp, "%s%s", match, opts->delim);
-    free(match);
+    /* if there is no match -- via the invert_match option */
+    if (info->substr_start == NULL) {
+        fprintf(out_fp, "%s%s", "-", opts->delim);
+    }
+    /* otherwise there is a matching substring to report */
+    else {
+        match = substring( seq->seq.s, start, length );
+        fprintf(out_fp, "%s%s", match, opts->delim);
+        free(match);
+    }
 
     /* sequence portion of stats report */
     display_sequence (out_fp,

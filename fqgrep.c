@@ -206,7 +206,8 @@ help_message() {
     fprintf(stdout, "\t%-20s%-20s\n", "-h", "This help message");
     fprintf(stdout, "\t%-20s%-20s\n", "-v", "Program and version information");
     fprintf(stdout, "\t%-20s%-20s\n", "-p <STRING>", "Pattern of interest to grep [REQUIRED]");
-    fprintf(stdout, "\t%-20s%-20s\n", "-l", "Invert match - show only sequences that DO NOT match the pattern");
+    fprintf(stdout, "\t%-20s%-20s\n", "-l", "Invert match - show only sequences that ");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "DO NOT match the pattern");
     fprintf(stdout, "\t%-20s%-20s\n", "-c", "Highlight matching string with color");
     fprintf(stdout, "\t%-20s%-20s\n", "-f", "Output matches in FASTA format");
     fprintf(stdout, "\t%-20s%-20s\n", "-r", "Output matches in detailed stats report format");
@@ -592,7 +593,7 @@ report_stats(FILE *out_fp,
 
     /* if there is no match -- via the invert_match option */
     if (info->substr_start == NULL) {
-        fprintf(out_fp, "%s%s", "-", opts->delim);
+        fprintf(out_fp, "%s%s", "*", opts->delim);
     }
     /* otherwise there is a matching substring to report */
     else {

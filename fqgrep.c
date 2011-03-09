@@ -42,6 +42,7 @@ typedef struct {
     int color;
     int force_tre;
     int invert_match;
+    int show_all_records;
     int report_fastq;
     int report_fasta;
     int report_stats;
@@ -129,6 +130,7 @@ int main(int argc, char *argv[]) {
         0,            // color flag
         0,            // force tre engine flag
         0,            // invert match flag
+        0,            // show all records flag
         1,            // output fastq report
         0,            // output fasta report
         0,            // output stats report
@@ -232,6 +234,10 @@ help_message() {
     fprintf(stdout, "\t%-20s%-20s\n", "", "(per input FASTQ file)");
     fprintf(stdout, "\t%-20s%-20s\n", "-o <out_file>", "Desired output file.");
     fprintf(stdout, "\t%-20s%-20s\n", "", "If not specified, defaults to stdout");
+    fprintf(stdout, "\t%-20s%-20s\n", "-a", "Show all records irregardless of match status");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "Useful in conjunction with the -r option;");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "when one would like to do further post-processing");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "of the match data");
 }
 
 void
@@ -250,7 +256,7 @@ process_options(int argc, char *argv[], options *opts) {
     char *opt_p_value = NULL;
     char *opt_b_value = NULL;
 
-    while( (c = getopt(argc, argv, "hvecfrlm:i:s:d:o:p:b:CD:I:S:")) != -1 ) {
+    while( (c = getopt(argc, argv, "hvecfrlam:i:s:d:o:p:b:CD:I:S:")) != -1 ) {
         switch(c) {
             case 'h':
                 help_message();
@@ -265,6 +271,9 @@ process_options(int argc, char *argv[], options *opts) {
                 break;
             case 'l':
                 opts->invert_match = 1;
+                break;
+            case 'a':
+                opts->show_all_records = 1;
                 break;
             case 'o':
                 opt_o_value = optarg;
@@ -426,6 +435,12 @@ search_input_fastq_file(FILE *out_fp,
         }
 
         else if ( match_info.substr_start == NULL && opts.invert_match == 1 ) {
+            match_counter++;
+            if (opts.count == 0)
+                report_read( out_fp, &opts, seq, &match_info );
+        }
+
+        else if ( opts.show_all_records == 1 ) {
             match_counter++;
             if (opts.count == 0)
                 report_read( out_fp, &opts, seq, &match_info );

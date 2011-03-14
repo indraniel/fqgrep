@@ -108,6 +108,7 @@ make; # try 'make genome'   if at the Genome Center at Washington University
 
 The 'fqgrep' executable should be in the working directory.
 Afterwards, you can move the executable to wherever you wish.
+Usually, this is the directory "/usr/local/bin" .
 
 NOTES
 =====
@@ -170,8 +171,6 @@ can perform a "left" or "right"-based adaptor trimming based upon an
 input FASTQ or FASTA file, and an adaptor pattern (which can be a
 regular expression). Please try a "perldoc scripts/fqgrep-trim.pl" to
 see its full documentation.
-
-To get fqgrep-trim.pl to work you may need to install the "Path::Class"
 
 AUTHOR
 ======

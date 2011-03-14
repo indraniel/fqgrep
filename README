@@ -12,9 +12,9 @@ Below is the help message via ('fqgrep -h') describing its usage:
 
 Usage: fqgrep [options] -p <pattern> <fastq_files>
         -h                  This help message   
-        -v                  Program and version information
+        -V                  Program and version information
         -p <STRING>         Pattern of interest to grep [REQUIRED]
-        -l                  Invert match - show only sequences that
+        -v                  Invert match - show only sequences that
                             DO NOT match the pattern
         -c                  Highlight matching string with color
         -f                  Output matches in FASTA format

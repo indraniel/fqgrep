@@ -30,7 +30,7 @@
 #include "bm.h"
 
 /* D E F I N E S *************************************************************/
-#define VERSION "0.4.0"
+#define VERSION "0.4.1"
 #define PRG_NAME "fqgrep"
 #define FASTQ_FILENAME_MAX_LENGTH 1024
 #define MAX_PATTERN_LENGTH 1024
@@ -206,9 +206,9 @@ help_message() {
     fprintf(stdout, "Usage: %s %s %s %s\n", 
                     PRG_NAME, "[options]", "-p <pattern>", "<fastq_files>");
     fprintf(stdout, "\t%-20s%-20s\n", "-h", "This help message");
-    fprintf(stdout, "\t%-20s%-20s\n", "-v", "Program and version information");
+    fprintf(stdout, "\t%-20s%-20s\n", "-V", "Program and version information");
     fprintf(stdout, "\t%-20s%-20s\n", "-p <STRING>", "Pattern of interest to grep [REQUIRED]");
-    fprintf(stdout, "\t%-20s%-20s\n", "-l", "Invert match - show only sequences that ");
+    fprintf(stdout, "\t%-20s%-20s\n", "-v", "Invert match - show only sequences that ");
     fprintf(stdout, "\t%-20s%-20s\n", "", "DO NOT match the pattern");
     fprintf(stdout, "\t%-20s%-20s\n", "-c", "Highlight matching string with color");
     fprintf(stdout, "\t%-20s%-20s\n", "-f", "Output matches in FASTA format");
@@ -243,7 +243,7 @@ help_message() {
 void
 version_info() {
     fprintf(stdout, "%s -- version: %s\n", PRG_NAME, VERSION);
-    fprintf(stdout, "%s --  %s:%s\n",
+    fprintf(stdout, "%s -- %s:%s\n",
             "Author", "Indraniel Das",
             "<idas at wustl dot edu> or <indraniel at gmail dot com>");
 }
@@ -256,20 +256,20 @@ process_options(int argc, char *argv[], options *opts) {
     char *opt_p_value = NULL;
     char *opt_b_value = NULL;
 
-    while( (c = getopt(argc, argv, "hvecfrlam:i:s:d:o:p:b:CD:I:S:")) != -1 ) {
+    while( (c = getopt(argc, argv, "hVecfrvam:i:s:d:o:p:b:CD:I:S:")) != -1 ) {
         switch(c) {
             case 'h':
                 help_message();
                 exit(0);
                 break;
-            case 'v':
+            case 'V':
                 version_info();
                 exit(0);
                 break;
             case 'e':
                 opts->force_tre = 1;
                 break;
-            case 'l':
+            case 'v':
                 opts->invert_match = 1;
                 break;
             case 'a':

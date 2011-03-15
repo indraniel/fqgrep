@@ -162,7 +162,8 @@ behavior to fqgrep.
 fqgrep-trim.pl
 --------------
 
-Based upon fqgrep, one could build sequence demultiplexers and trimmers.
+Based upon fqgrep, one could build sequence demultiplexers and trimmers
+(via its -a and -r options).
 
 For the case of adaptor trimming, a rudimentary example is provided in
 the "scripts" subdirectory of the git repository.
@@ -171,7 +172,7 @@ The example trimmer, written in PERL, is called 'fqgrep-trim.pl'. It
 can perform a "left" or "right"-based adaptor trimming based upon an
 input FASTQ or FASTA file, and an adaptor pattern (which can be a
 regular expression). Please try a "perldoc scripts/fqgrep-trim.pl" to
-see its full documentation.
+see its full documentation and example invocations.
 
 This script is here mostly for illustrative purposes to show how one
 could manipulate the output of fqgrep for more custom post-processing

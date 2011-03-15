@@ -142,7 +142,7 @@ the notions behind the bitap algorithm:
 These above mentioned insertion, deletion, and substitution cost
 parameters can be adjusted by the -m, -s. -i, -d, -S, -I, -D options
 to fqgrep.  The exact costs for each match can be observed via the
-detailed report (the -r option to fqgrep).
+detailed stats report (the -r option to fqgrep).
 
 The TRE regular expression library is the default regular expression
 engine used in R -- The R Project for Statistical Computing
@@ -176,7 +176,7 @@ see its full documentation and example invocations.
 
 This script is here mostly for illustrative purposes to show how one
 could manipulate the output of fqgrep for more custom post-processing
-and/or analysis on the read data.
+and/or analysis on the sequence read data.
 
 AUTHOR
 ======
@@ -199,4 +199,4 @@ DISCLAIMER
 This software is provided "as is" without warranty of any kind.
 
 
-January 28, 2011
+March 15, 2011

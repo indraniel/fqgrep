@@ -153,9 +153,10 @@ Project (http://www.bioconductor.org).
 Only POSIX styled regular expression can be used with fqgrep.
 
 If a dash ('-') is used as the input_fastq, it will read the FASTQ/FASTA
-input from standard input (stdin).  This is useful when piping the
-output of one fqgrep command into another.  Supplying anything other
-than a FASTQ/FASTA formatted file in this fashion may give unexpected
+input from standard input (stdin). This is useful when piping the output
+of one fqgrep command (or any other program that produces FASTQ/FASTA
+formatted output) into another fqgrep command. Supplying anything other
+than a FASTQ/FASTA formatted input in this manner may give unexpected
 behavior to fqgrep.
 
 fqgrep-trim.pl

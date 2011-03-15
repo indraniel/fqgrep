@@ -28,12 +28,15 @@ use File::Basename;
 use Pod::Usage;
 use Getopt::Long;
 
+# V E R S I O N ###############################################################
+our $VERSION = "0.1.0";
+
 # M A I N #####################################################################
 
 $| = 1; # enable AUTOFLUSH mode
 
 # Setup Default options
-my ($opt_fastq, @opt_mismatches, $opt_adaptor, $opt_help);
+my ($opt_fastq, @opt_mismatches, $opt_adaptor, $opt_help, $opt_version);
 my $opt_read_length_histogram;
 my $opt_read_count_histogram;
 my $fqgrep = qx(which fqgrep) || undef; # assuming fqgrep is somewhere in $PATH
@@ -43,6 +46,7 @@ my $opt_format = 'FASTQ';
 # parse options
 my $result = GetOptions(
     "help"                           => \$opt_help,
+    "version"                        => \$opt_version,
     "input=s"                        => \$opt_fastq,
     "adaptor=s"                      => \$opt_adaptor,
     "mismatches=i{,}"                => \@opt_mismatches,
@@ -61,64 +65,18 @@ if ($opt_help) {
     );
 }
 
-# ensure that fqgrep is found and runnable
-unless ($fqgrep) {
-    die "[err] Could not find the location to fqgrep!\n";
-}
-chomp($fqgrep);
-$fqgrep = Path::Class::File->new($fqgrep);
-
-unless (-e $fqgrep) {
-    die "[err] Did not find fqgrep at : $fqgrep !\n";
+if ($opt_version) {
+    print "$0 -- $VERSION\n";
+    exit(0);
 }
 
-unless (-x $fqgrep) {
-    die "[err] fqgrep ($fqgrep) is not executable!\n";
-}
+validate_input_args();
 
-# ensure input fastq/a file existance
-unless ($opt_fastq) {
-    die "[err] Need to pass in a fastq/a file to process via --fastq !\n";
-}
-my $fastq = Path::Class::File->new($opt_fastq);
-die "[err] Could not find fastq $fastq \n" unless(-e $fastq);
-
-# ensure adaptor sequence
-unless($opt_adaptor) {
-    die "[err] Need to pass an adaptor sequence to trim for via --adaptor!\n";
-}
-
-# ensure that there is a trim type
-unless ($opt_trim =~/(left|right)/i) {
-    die "[err] Need to provide a correct --trim type: 'left' or 'right' !\n";
-}
-
-# ensure a mismatch level
-unless (@opt_mismatches) {
-    @opt_mismatches = qw(0);
-}
-
-# ensure there is an appropriate output format
-unless ($opt_format =~ /^FAST(A|Q)$/) {
-    die "[err] The format option ($opt_format) is not valid. ",
-        "It should be either 'FASTA' or 'FASTQ'!\n";
-}
-
-# ensure output stat dump file names
-unless ($opt_read_length_histogram) {
-    $opt_read_length_histogram = $fastq->basename . '.rlh.dat';
-}
-
-unless ($opt_read_count_histogram) {
-    $opt_read_count_histogram =
-      $fastq->basename . '.rch.dat';
-}
-
-print "Processing original fastq file: $fastq \n";
+print "Processing original fastq file: $opt_fastq \n";
 
 # Performing trimming on the file and collect relevant statistics
 my $stats = trim_file(
-    input      => $fastq,
+    input      => $opt_fastq,
     mismatches => \@opt_mismatches,
     adaptor    => $opt_adaptor,
     trim_type  => $opt_trim,
@@ -129,17 +87,78 @@ my $stats = trim_file(
 my $rlh_file = Path::Class::File->new($opt_read_length_histogram);
 my $rch_file = Path::Class::File->new($opt_read_count_histogram);
 
+print 'Dumping out trimming stats', "\n";
+my $t0 = [gettimeofday];
 dump_stats(
     stats                         => $stats,
     mismatches                    => \@opt_mismatches,
     read_length_histogram_file    => $rlh_file,
     read_count_histogram_file     => $rch_file,
-    fastq                         => $fastq
+    fastq                         => $opt_fastq
 );
+my $elapsed = tv_interval($t0);
+print "Elapsed stats dumping processing time: ", $elapsed, " secs\n";
 
 exit(0);
 
 # S U B R O U T I N E S #######################################################
+sub validate_input_args {
+
+    # ensure that fqgrep is found and runnable
+    unless ($fqgrep) {
+        die "[err] Could not find the location to fqgrep!\n";
+    }
+    chomp($fqgrep);
+    $fqgrep = Path::Class::File->new($fqgrep);
+
+    unless (-e $fqgrep) {
+        die "[err] Did not find fqgrep at : $fqgrep !\n";
+    }
+
+    unless (-x $fqgrep) {
+        die "[err] fqgrep ($fqgrep) is not executable!\n";
+    }
+
+    # ensure input fastq/a file existance
+    unless ($opt_fastq) {
+        die "[err] Need to pass in a fastq/a file to process via --fastq !\n";
+    }
+    $opt_fastq = Path::Class::File->new($opt_fastq);
+    die "[err] Could not find fastq/fasta $opt_fastq \n" unless (-e $opt_fastq);
+
+    # ensure adaptor sequence
+    unless ($opt_adaptor) {
+        die
+          "[err] Need to pass an adaptor sequence to trim for via --adaptor!\n";
+    }
+
+    # ensure that there is a trim type
+    unless ($opt_trim =~ /(left|right)/i) {
+        die
+          "[err] Need to provide a correct --trim type: 'left' or 'right' !\n";
+    }
+
+    # ensure a mismatch level
+    unless (@opt_mismatches) {
+        @opt_mismatches = qw(0);
+    }
+
+    # ensure there is an appropriate output format
+    unless ($opt_format =~ /^FAST(A|Q)$/) {
+        die "[err] The format option ($opt_format) is not valid. ",
+          "It should be either 'FASTA' or 'FASTQ'!\n";
+    }
+
+    # ensure output stat dump file names
+    unless ($opt_read_length_histogram) {
+        $opt_read_length_histogram = $opt_fastq->basename . '.rlh.dat';
+    }
+
+    unless ($opt_read_count_histogram) {
+        $opt_read_count_histogram = $opt_fastq->basename . '.rch.dat';
+    }
+}
+
 sub trim_file {
     my %args = @_;
     my ($input, $mismatches, $adaptor, $trim_type, $format) =
@@ -594,6 +613,10 @@ fqgrep-trim.pl [OPTIONS] --adaptor [adaptor regex] --input [fastq file]
 =item B<--help>
 
 Help message to fqgrep-trim.pl.  A repeat of a subset of this documentation.
+
+=item B<--version>
+
+Display version information.
 
 =item B<--input=FASTQ|FASTA>
 

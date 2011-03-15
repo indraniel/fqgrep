@@ -450,17 +450,6 @@ sub dump_stats {
     }
     close($fh);
 
-#    # Dump out read mismatch count histogram file stats ($fastq.rmch.dat)
-#    my $max_mismatch = (sort { $b <=> $a } @{$mismatches})[0];
-#    my $rmc_hist = $stats->{$max_mismatch}->{'mismatch_count_histogram'};
-#    $fh = $rmch_file->openw;
-#    print $fh join("\t", 'MismatchThreshold', 'MismatchLevel', 'FilteredReads'), "\n";
-#    for my $m (0 .. $max_mismatch) {
-#        my $count = exists $rmc_hist->{$m} ? $rmc_hist->{$m} : 0;
-#        print $fh join("\t", $m, $count), "\n";
-#    }
-#    close($fh);
-
     # Dump out read length count histogram file stats ($fastq.rlh.dat)
     my $max_length = max_filtered_read_length($stats);
     $fh = $rlh_file->openw;

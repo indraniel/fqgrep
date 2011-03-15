@@ -1,11 +1,10 @@
 SYNOPSIS
 ========
 
-This is an approximate sequence pattern matcher for FASTQ/FASTA
-files.  One can think of it as being a grep
-(http://en.wikipedia.org/wiki/Grep) and agrep
-(http://en.wikipedia.org/wiki/Agrep) like tool optimized for FASTQ
-and FASTA files. It can work directly on both compressed and
+'fqgrep' is an approximate sequence pattern matcher for FASTQ/FASTA files.
+One can think of it as being a grep (http://en.wikipedia.org/wiki/Grep)
+and agrep (http://en.wikipedia.org/wiki/Agrep) like tool optimized
+for FASTQ and FASTA files. It can work directly on both compressed and
 uncompressed file types.
 
 Below is the help message via ('fqgrep -h') describing its usage:

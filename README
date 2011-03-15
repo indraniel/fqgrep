@@ -163,6 +163,7 @@ fqgrep-trim.pl
 --------------
 
 Based upon fqgrep, one could build sequence demultiplexers and trimmers.
+
 For the case of adaptor trimming, a rudimentary example is provided in
 the "scripts" subdirectory of the git repository.
 
@@ -171,6 +172,10 @@ can perform a "left" or "right"-based adaptor trimming based upon an
 input FASTQ or FASTA file, and an adaptor pattern (which can be a
 regular expression). Please try a "perldoc scripts/fqgrep-trim.pl" to
 see its full documentation.
+
+This script is here mostly for illustrative purposes to show how one
+could manipulate the output of fqgrep for more custom post-processing
+and/or analysis on the read data.
 
 AUTHOR
 ======

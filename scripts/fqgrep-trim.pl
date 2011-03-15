@@ -29,7 +29,7 @@ use Pod::Usage;
 use Getopt::Long;
 
 # V E R S I O N ###############################################################
-our $VERSION = "0.1.0";
+our $VERSION = "0.2.0";
 
 # M A I N #####################################################################
 
@@ -211,18 +211,18 @@ sub run_fqgrep_and_trim_reads {
 
     my $cmd;
     if ($mismatch == 0) {
-        $cmd = qq($fqgrep -e -r -p '$pattern' $fastq);
+        $cmd = qq($fqgrep -e -a -r -p '$pattern' $fastq);
     }
     else {
-        $cmd = qq($fqgrep -r -m $mismatch -p '$pattern' $fastq);
+        $cmd = qq($fqgrep -a -r -m $mismatch -p '$pattern' $fastq);
     }
 
     print $cmd, "\n";
 
     # trim statistics recording variables
-    my %trimmed_reads;
     my %read_length_histogram;
-    my ($match_counter, $omit_counter, $trim_counter) = (0, 0, 0);
+    my ($total_reads_counter, $match_counter, $omit_counter, $trim_counter) =
+      (0, 0, 0, 0);
 
     # setup output trimming files
     my ($file_name, $dir_path, $extension) =
@@ -237,17 +237,19 @@ sub run_fqgrep_and_trim_reads {
 
     my $trim_fh  = $trim_file->openw;
     my $omit_fh  = $omit_file->openw;
+    my $utrim_fh = $utrim_file->openw;
 
     # invoke the fqgrep command and read its output line-by-line
     open(my $fh, '-|', $cmd)
       or die "[err] Cannot start fqgrep : $!\n";
 
-    # go through each of the fqgrep outputs and attempt to
-    # append to the trim and/or omit files
+    # go through each of the fqgrep outputs and attempt to classify (and
+    # post-process if necessary) the reads and append to either the
+    # untrimmed, trim or omit files
     my $t0 = [gettimeofday]; # start stopwatch
     while (my $line = <$fh>) {
-        next if ($match_counter == 0 && $line =~ /^read name/);
-        $match_counter++;
+        next if ($total_reads_counter == 0 && $line =~ /^read name/);
+        $total_reads_counter++;
         chomp($line);
 
         # parse out the fqgrep output line for the relevant info
@@ -256,51 +258,51 @@ sub run_fqgrep_and_trim_reads {
         my $num_mismatches  = $cols[1];
         my $match_start_pos = $cols[5];
         my $match_end_pos   = $cols[6];
-#        my $match_string    = $cols[7];
+        my $match_string    = $cols[7];
         my $sequence        = $cols[8];
         my $quality         = $cols[9] ? $cols[9] : '';
 
-        my ($trim_or_omit_flag, $trimmed_read_length) = trim_or_omit_read(
-            trim_type       => $trim_type,
-            read_name       => $read_name,
-            sequence        => $sequence,
-            quality         => $quality,
-            match_start_pos => $match_start_pos,
-            match_end_pos   => $match_end_pos,
-            omit_fh         => $omit_fh,
-            trim_fh         => $trim_fh,
-            format          => $format
-        );
+        if ($match_string eq '*') {
+            # did not make a match -- an untrimmed read
+            print_read(
+                read_name       => $read_name,
+                sequence        => $sequence,
+                quality         => $quality,
+                fh              => $utrim_fh,
+                format          => $format
+            );
+        }
+        else {
+            # made a match -- a trimmed or omitted read
+            my ($trim_or_omit_flag, $trimmed_read_length) = trim_or_omit_read(
+                trim_type       => $trim_type,
+                read_name       => $read_name,
+                sequence        => $sequence,
+                quality         => $quality,
+                match_start_pos => $match_start_pos,
+                match_end_pos   => $match_end_pos,
+                omit_fh         => $omit_fh,
+                trim_fh         => $trim_fh,
+                format          => $format
+            );
 
-        $read_length_histogram{$trimmed_read_length}++;
-        $trimmed_reads{$read_name} = 1;
-        $omit_counter++ if ($trim_or_omit_flag eq 'omit');
-        $trim_counter++ if ($trim_or_omit_flag eq 'trim');
+            $match_counter++;
+            $read_length_histogram{$trimmed_read_length}++;
+            $omit_counter++ if ($trim_or_omit_flag eq 'omit');
+            $trim_counter++ if ($trim_or_omit_flag eq 'trim');
+        }
     }
     my $elapsed = tv_interval ( $t0 ); # end stopwatch
     print "Elapsed fqgrep processing time: $elapsed secs\n";
 
     close($fh);
 
-    # all the remaining reads unaccounted for by fqgrep are keepable
-    # reads.  Place them into the un-trimmed file.
-    print 'Dumping out the un-trimmed reads into ', $utrim_file->basename,
-          "\n";
-    $t0 = [gettimeofday];
-    dump_untrimmed_reads(
-        input      => $fastq,
-        output     => $utrim_file,
-        trim_index => \%trimmed_reads,
-        format     => $format
-    );
-    $elapsed = tv_interval($t0);
-    print "Elapsed un-trimmed reads dumping processing time: ",
-          $elapsed, " secs\n";
-
     close($trim_fh);
     close($omit_fh);
+    close($utrim_fh);
 
     my %stats = (
+        total_reads_counter      => $total_reads_counter,
         match_counter            => $match_counter,
         omit_counter             => $omit_counter,
         trim_counter             => $trim_counter,
@@ -422,82 +424,6 @@ sub print_read {
     }
 }
 
-sub dump_untrimmed_reads {
-    my %args = @_;
-    my ($input, $output, $trim_index, $format) =
-      @args{'input', 'output', 'trim_index', 'format'};
-
-    my $input_file_type = input_file_type($input);
-
-    if ($input_file_type eq 'FASTQ') {
-        return dump_untrimmed_from_input_fastq(%args);
-    }
-
-    return dump_untrimmed_from_input_fasta(%args);
-}
-
-sub dump_untrimmed_from_input_fastq {
-    my %args = @_;
-    my ($input, $output, $trim_index, $format) =
-      @args{'input', 'output', 'trim_index', 'format'};
-
-    my $ifh = $input->openr;
-    my $ofh = $output->openw;
-
-    while (my $name = <$ifh>) {
-        my ($read_name) = $name =~ /^@(\S+)/;
-        my $sequence = <$ifh>;
-        my $comment  = <$ifh>;
-        my $quality  = <$ifh>;
-
-        next if exists $trim_index->{$read_name};
-
-        if ($format eq 'FASTQ') {
-            print $ofh $name;
-            print $ofh $sequence;
-            print $ofh $comment;
-            print $ofh $quality;
-        }
-        else {
-            print $ofh '>', $read_name, "\n";
-            print $ofh $sequence;
-        }
-    }
-
-    close($ofh);
-    close($ifh);
-}
-
-sub dump_untrimmed_from_input_fasta {
-    my %args = @_;
-    my ($input, $output, $trim_index, $format) =
-      @args{'input', 'output', 'trim_index', 'format'};
-
-    my $ifh = $input->openr;
-    my $ofh = $output->openw;
-
-    while (my $name = <$ifh>) {
-        my ($read_name) = $name =~ /^>\s*(\S+)/;
-        my $sequence = <$ifh>;
-
-        next if exists $trim_index->{$read_name};
-
-        if ($format eq 'FASTQ') {
-            print $ofh '@', $read_name, "\n";
-            print $ofh $sequence;
-            print $ofh '+', "\n";
-            print $ofh '', "\n";
-        }
-        else {
-            print $ofh $name;
-            print $ofh $sequence;
-        }
-    }
-    
-    close($ofh);
-    close($ifh);
-}
-
 sub dump_stats {
     my %args = @_;
     my ($stats, $mismatches, $rlh_file, $rch_file, $fastq) = @args{
@@ -506,19 +432,6 @@ sub dump_stats {
         'fastq'
       };
 
-    my $total_read_count = `wc -l $fastq`;
-    chomp($total_read_count);
-    ($total_read_count) = $total_read_count =~ /(\d+)\s*(\S+)/;
-
-    # ascertain total reads in file based upon input file type
-    my $type = input_file_type($fastq);
-    if ($type eq 'FASTQ') {
-        $total_read_count = int($total_read_count/4);
-    }
-    else {
-        $total_read_count = int($total_read_count/2);
-    }
-
     # Dump out read count histogram file stats
     my $fh = $rch_file->openw;
     print $fh join("\t", 'MismatchThreshold', 'TotalFilteredReads', 'Trimmed', 'Omitted', 'TotalReads'), "\n";
@@ -526,6 +439,7 @@ sub dump_stats {
         my $total_filter_count = $stats->{$mismatch}->{'match_counter'};
         my $trim_count = $stats->{$mismatch}->{'trim_counter'};
         my $omit_count = $stats->{$mismatch}->{'omit_counter'};
+        my $total_read_count = $stats->{$mismatch}->{'total_reads_counter'};
 
         print $fh join("\t",
             $mismatch, 
@@ -561,22 +475,6 @@ sub dump_stats {
     close($fh);
 
     return 1;
-}
-
-sub input_file_type {
-    my $input_file = shift;
-
-    my $fh = $input_file->openr;
-    my $header = <$fh>;
-    chomp($header);
-    close($fh);
-
-    my $file_type = 'FASTA';
-    if ($header =~ /^@/) {
-        $file_type = 'FASTQ';
-    }
-
-    return $file_type;
 }
 
 sub max_filtered_read_length {

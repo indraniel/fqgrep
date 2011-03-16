@@ -30,7 +30,7 @@
 #include "bm.h"
 
 /* D E F I N E S *************************************************************/
-#define VERSION "0.4.1"
+#define VERSION "0.4.2"
 #define PRG_NAME "fqgrep"
 #define FASTQ_FILENAME_MAX_LENGTH 1024
 #define MAX_PATTERN_LENGTH 1024
@@ -204,12 +204,16 @@ int main(int argc, char *argv[]) {
 void 
 help_message() {
     fprintf(stdout, "Usage: %s %s %s %s\n", 
-                    PRG_NAME, "[options]", "-p <pattern>", "<fastq_files>");
+                    PRG_NAME, "[options]", "-p <pattern>", "<fastq_or_fasta_files>");
     fprintf(stdout, "\t%-20s%-20s\n", "-h", "This help message");
     fprintf(stdout, "\t%-20s%-20s\n", "-V", "Program and version information");
     fprintf(stdout, "\t%-20s%-20s\n", "-p <STRING>", "Pattern of interest to grep [REQUIRED]");
     fprintf(stdout, "\t%-20s%-20s\n", "-v", "Invert match - show only sequences that ");
     fprintf(stdout, "\t%-20s%-20s\n", "", "DO NOT match the pattern");
+    fprintf(stdout, "\t%-20s%-20s\n", "-a", "Show all records irregardless of match status");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "Useful in conjunction with the -r option;");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "when one would like to do further post-processing");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "of the match data");
     fprintf(stdout, "\t%-20s%-20s\n", "-c", "Highlight matching string with color");
     fprintf(stdout, "\t%-20s%-20s\n", "-f", "Output matches in FASTA format");
     fprintf(stdout, "\t%-20s%-20s\n", "-r", "Output matches in detailed stats report format");
@@ -231,13 +235,9 @@ help_message() {
     fprintf(stdout, "\t%-20s%-20s\n", "", "approximate match [Default: 1]");
     fprintf(stdout, "\t%-20s%-20s\n", "-e", "Force tre regexp engine usage");
     fprintf(stdout, "\t%-20s%-20s\n", "-C", "Display only a total count of matches");
-    fprintf(stdout, "\t%-20s%-20s\n", "", "(per input FASTQ file)");
+    fprintf(stdout, "\t%-20s%-20s\n", "", "(per input FASTQ/FASTA file)");
     fprintf(stdout, "\t%-20s%-20s\n", "-o <out_file>", "Desired output file.");
     fprintf(stdout, "\t%-20s%-20s\n", "", "If not specified, defaults to stdout");
-    fprintf(stdout, "\t%-20s%-20s\n", "-a", "Show all records irregardless of match status");
-    fprintf(stdout, "\t%-20s%-20s\n", "", "Useful in conjunction with the -r option;");
-    fprintf(stdout, "\t%-20s%-20s\n", "", "when one would like to do further post-processing");
-    fprintf(stdout, "\t%-20s%-20s\n", "", "of the match data");
 }
 
 void

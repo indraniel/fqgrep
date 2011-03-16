@@ -4,8 +4,9 @@ SYNOPSIS
 'fqgrep' is an approximate sequence pattern matcher for FASTQ/FASTA files.
 One can think of it as being a grep (http://en.wikipedia.org/wiki/Grep)
 and agrep (http://en.wikipedia.org/wiki/Agrep) like tool optimized
-for FASTQ and FASTA files. It can work directly on both compressed and
-uncompressed file types.
+for FASTQ (http://en.wikipedia.org/wiki/FASTQ_format) and FASTA
+(http://en.wikipedia.org/wiki/FASTA_format) files. It can work directly
+on both compressed and uncompressed file types.
 
 Below is the help message via ('fqgrep -h') describing its usage:
 

@@ -89,7 +89,6 @@ As the root user, please try the following terminal command for
 
      cpan Path::Class
 
-
 INSTALLATION
 ============
 
@@ -110,74 +109,14 @@ The 'fqgrep' executable should be in the working directory.
 Afterwards, you can move the executable to wherever you wish.
 Usually, this is the directory "/usr/local/bin" .
 
-NOTES
-=====
+USAGE & DETAILS
+===============
 
-When simply searching for exact sequence patterns, or in other
-words, when zero mismatches on a pattern are specified (the default
-case), the Boyer-Moore approach (as used similarly by grep) is
-taken.
+For more information about fqgrep and its associated scripts, please
+visit the following documentation page:
 
-If you would like to search for an exact pattern via a regular
-expression, please use the '-e' option.
+https://github.com/indraniel/fqgrep/wiki
 
-fqgrep does not use an alignment strategy for approximate sequence
-searching. For approximate pattern matching, the TRE library is being
-used.
-
-The TRE library uses a variant of Bitap algorithm
-(http://en.wikipedia.org/wiki/Bitap_algorithm) for approximate
-string matches.  Below is an excerpt from the TRE README describing
-the notions behind the bitap algorithm:
-
-   Approximate pattern matching allows matches to be approximate, that
-   is, allows the matches to be close to the searched pattern under
-   some measure of closeness. TRE uses the edit-distance measure (also
-   known as the Levenshtein distance) where characters can be
-   inserted, deleted, or substituted in the searched text in order to
-   get an exact match. Each insertion, deletion, or substitution adds
-   the distance, or cost, of the match. TRE can report the matches
-   which have a cost lower than some given threshold value. TRE can
-   also be used to search for matches with the lowest cost.
-
-These above mentioned insertion, deletion, and substitution cost
-parameters can be adjusted by the -m, -s. -i, -d, -S, -I, -D options
-to fqgrep.  The exact costs for each match can be observed via the
-detailed stats report (the -r option to fqgrep).
-
-The TRE regular expression library is the default regular expression
-engine used in R -- The R Project for Statistical Computing
-(http://www.r-project.org); due to this, the results of fqgrep maybe
-similar to the results produced by software from the Bioconductor
-Project (http://www.bioconductor.org).
-
-Only POSIX styled regular expression can be used with fqgrep.
-
-If a dash ('-') is used as the input_fastq, it will read the FASTQ/FASTA
-input from standard input (stdin). This is useful when piping the output
-of one fqgrep command (or any other program that produces FASTQ/FASTA
-formatted output) into another fqgrep command. Supplying anything other
-than a FASTQ/FASTA formatted input in this manner may give unexpected
-behavior to fqgrep.
-
-fqgrep-trim.pl
---------------
-
-Based upon fqgrep, one could build sequence demultiplexers and trimmers
-(via its -a and -r options).
-
-For the case of adaptor trimming, a rudimentary example is provided in
-the "scripts" subdirectory of the git repository.
-
-The example trimmer, written in PERL, is called 'fqgrep-trim.pl'. It
-can perform a "left" or "right"-based adaptor trimming based upon an
-input FASTQ or FASTA file, and an adaptor pattern (which can be a
-regular expression). Please try a "perldoc scripts/fqgrep-trim.pl" to
-see its full documentation and example invocations.
-
-This script is here mostly for illustrative purposes to show how one
-could manipulate the output of fqgrep for more custom post-processing
-and/or analysis on the sequence read data.
 
 AUTHOR
 ======
@@ -200,4 +139,4 @@ DISCLAIMER
 This software is provided "as is" without warranty of any kind.
 
 
-March 15, 2011
+Created: March 15, 2011

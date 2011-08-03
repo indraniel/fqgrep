@@ -30,7 +30,7 @@
 #include "bm.h"
 
 /* D E F I N E S *************************************************************/
-#define VERSION "0.4.2"
+#define VERSION "0.4.3"
 #define PRG_NAME "fqgrep"
 #define FASTQ_FILENAME_MAX_LENGTH 1024
 #define MAX_PATTERN_LENGTH 1024
@@ -386,7 +386,9 @@ search_input_fastq_file(FILE *out_fp,
 
     // read sequence  
     while ( (l = kseq_read(seq)) >= 0 ) {
-        if ( strlen(seq->seq.s) < strlen(opts.search_pattern) ) {
+        if ( (strlen(seq->seq.s) < strlen(opts.search_pattern)) &&
+             (opts.max_mismatches == 0) &&
+             (opts.force_tre == 0) ) {
             fprintf(stderr, "%s : %s '%s' %s (%zd) %s (%zd).\n",
                             PRG_NAME,
                             "[err] For sequence ",

@@ -30,7 +30,7 @@
 #include "bm.h"
 
 /* D E F I N E S *************************************************************/
-#define VERSION "0.4.3"
+#define VERSION "0.4.4"
 #define PRG_NAME "fqgrep"
 #define FASTQ_FILENAME_MAX_LENGTH 1024
 #define MAX_PATTERN_LENGTH 1024

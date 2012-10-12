@@ -29,7 +29,7 @@ use strict;
 use Getopt::Long;
 
 # V E R S I O N ###############################################################
-our $VERSION = "0.1.0";
+our $VERSION = "0.1.1";
 
 # M A I N #####################################################################
 $| = 1;  # enable AUTOFLUSH mode
@@ -51,7 +51,7 @@ while (<>) {
          $start_match_pos, 
          $end_match_pos, 
          $match_string,
-         $sequence, $quality ) = @cols[0, 5, 6, 7, 8, 9];
+         $sequence, $quality ) = @cols[0, 6, 7, 8, 9, 10];
     
     # When the fastq record did not have a pattern match
     if ($match_string eq '*') {

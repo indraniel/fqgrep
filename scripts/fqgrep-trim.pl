@@ -29,7 +29,7 @@ use Pod::Usage;
 use Getopt::Long;
 
 # V E R S I O N ###############################################################
-our $VERSION = "0.2.0";
+our $VERSION = "0.2.1";
 
 # M A I N #####################################################################
 
@@ -255,12 +255,12 @@ sub run_fqgrep_and_trim_reads {
         # parse out the fqgrep output line for the relevant info
         my @cols = split(/\t/, $line);
         my $read_name       = $cols[0];
-        my $num_mismatches  = $cols[1];
-        my $match_start_pos = $cols[5];
-        my $match_end_pos   = $cols[6];
-        my $match_string    = $cols[7];
-        my $sequence        = $cols[8];
-        my $quality         = $cols[9] ? $cols[9] : '';
+        my $num_mismatches  = $cols[2];
+        my $match_start_pos = $cols[6];
+        my $match_end_pos   = $cols[7];
+        my $match_string    = $cols[8];
+        my $sequence        = $cols[9];
+        my $quality         = $cols[10] ? $cols[10] : '';
 
         if ($match_string eq '*') {
             # did not make a match -- an untrimmed read

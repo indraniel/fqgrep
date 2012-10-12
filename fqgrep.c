@@ -121,7 +121,7 @@ char* stringn_duplicate(const char *str, size_t n);
 /* M A I N *******************************************************************/
 int main(int argc, char *argv[]) {
 
-    int opt_idx, index;
+    int opt_idx;
     FILE *out_fp;
     char input_fastq[FASTQ_FILENAME_MAX_LENGTH] = { '\0' };
 
@@ -252,7 +252,6 @@ version_info() {
 int
 process_options(int argc, char *argv[], options *opts) {
     int c;
-    int index;
     char *opt_o_value = NULL;
     char *opt_p_value = NULL;
     char *opt_b_value = NULL;
@@ -705,7 +704,7 @@ report_fastq(FILE *out_fp,
         fprintf(out_fp, "%s\n", seq->qual.s);
     }
     else {
-        fprintf(out_fp, "\n", seq->qual.s);
+        fprintf(out_fp, "\n");
     }
 }
 

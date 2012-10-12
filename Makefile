@@ -1,7 +1,7 @@
 .PHONY: clean macports genome clean-genome
 
 fqgrep: fqgrep.o bm.o
-	gcc -g -lz -ltre -o fqgrep fqgrep.o bm.o
+	gcc -g -o fqgrep fqgrep.o bm.o -lz -ltre
 
 macports: fqgrep.o bm.o
 	gcc -g -L. -L/opt/local/lib -o fqgrep fqgrep.o bm.o -lz -ltre

@@ -35,6 +35,7 @@
 #define FASTQ_FILENAME_MAX_LENGTH 1024
 #define MAX_PATTERN_LENGTH 1024
 #define MAX_DELIM_LENGTH 10
+#define MAX_READ_COMMENT_LENGTH 81
 
 /* D A T A    S T R U C T U R E S ********************************************/
 typedef struct {
@@ -540,24 +541,28 @@ report_stats(FILE *out_fp,
 
     static int header_flag = 0;
     char *match = NULL;
+    char read_comment[MAX_READ_COMMENT_LENGTH] = "-";
 
     /*
        stat report columns are
          1. read_name
-         2. mismatches
-         3. num_ins
-         4. num_del
-         5. num_subst
-         6. start_position
-         7. end_position
-         8. match string
-         9. sequence string
-        10. quality string (if available)
+         2. read_comments
+         3. mismatches
+         4. num_ins
+         5. num_del
+         6. num_subst
+         7. start_position
+         8. end_position
+         9. match string
+        10. sequence string
+        11. quality string (if available)
      */
 
     if (header_flag == 0) {
-        fprintf(out_fp, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+        fprintf(out_fp, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                 "read name",
+                opts->delim,
+                "read comments",
                 opts->delim,
                 "total mismatches",
                 opts->delim,
@@ -585,8 +590,14 @@ report_stats(FILE *out_fp,
         header_flag = 1;
     }
 
-    fprintf(out_fp, "%s%s%d%s%d%s%d%s%d%s%d%s%d%s",
+    if (seq->comment.l) {
+        strncpy(read_comment, seq->comment.s, MAX_READ_COMMENT_LENGTH-1);
+    }
+
+    fprintf(out_fp, "%s%s%s%s%d%s%d%s%d%s%d%s%d%s%d%s",
             seq->name.s,
+            opts->delim,
+            read_comment,
             opts->delim,
             info->num_mismatches,
             opts->delim,
@@ -644,7 +655,12 @@ report_fasta(FILE *out_fp,
              const kseq_t *seq,
              const read_match *info) {
     /* header portion of FASTA read record */
-    fprintf(out_fp, ">%s\n", seq->name.s);
+    if (seq->comment.l) {
+        fprintf(out_fp, ">%s %s\n", seq->name.s, seq->comment.s);
+    }
+    else {
+        fprintf(out_fp, ">%s\n", seq->name.s);
+    }
 
     /* sequence portion of FASTA read record */
     display_sequence (out_fp,
@@ -664,7 +680,12 @@ report_fastq(FILE *out_fp,
              const read_match *info) {
 
     /* header portion of FASTQ read record */
-    fprintf(out_fp, "@%s\n", seq->name.s);
+    if (seq->comment.l) {
+        fprintf(out_fp, "@%s %s\n", seq->name.s, seq->comment.s);
+    }
+    else {
+        fprintf(out_fp, "@%s\n", seq->name.s);
+    }
 
     /* sequence portion of FASTQ read record */
     display_sequence (out_fp,
@@ -677,12 +698,7 @@ report_fastq(FILE *out_fp,
     fprintf(out_fp, "\n");
 
     /* comment portion of FASTQ read record */
-    if (seq->comment.l) {
-        fprintf(out_fp, "+%s\n", seq->comment.s);
-    }
-    else {
-        fprintf(out_fp, "+\n");
-    }
+    fprintf(out_fp, "+\n");
 
     /* quality portion of FASTQ read record */
     if (seq->qual.l) {

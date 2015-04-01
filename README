@@ -68,6 +68,13 @@ installed.
     On Mac OS X ( via macports [http://www.macports.org/] ):
 
         sudo port install tre
+   or 
+   wget http://laurikari.net/tre/tre-0.8.0.tar.gz
+   tar -zxvf tre-0.8.0.tar.gz
+   cd tre-0.8.0
+   ./configure
+   make
+   sudo make install
 
     For other installation alternatives please visit the following web site:
 

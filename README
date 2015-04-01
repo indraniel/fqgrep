@@ -99,6 +99,8 @@ installed.
     On Ubuntu (or any other Debian-based Linux distribution):
 
         sudo apt-get install zlib1g zlib1g-dev
+        
+    On Mac OS X the zlib library comes pre-installed. 
 
 Usage of the example trimmer, fqgrep-trim.pl, provided in the scripts
 subdirectory of this git repository, may require the installation of the
